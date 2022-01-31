@@ -1,0 +1,167 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="src">
+      <UniqueIdentifier>{e07d56fb-3a96-487f-9f1f-53b85a319eb7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\chat">
+      <UniqueIdentifier>{586ebd4a-b8c0-4ae6-9f49-d28079b60750}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\network">
+      <UniqueIdentifier>{dc263e1a-4793-4cb1-8c26-74ba77dec754}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\structures">
+      <UniqueIdentifier>{9a40ca41-ebaf-42fe-badf-fa49d6c4a84d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\globals">
+      <UniqueIdentifier>{f3ca7471-435a-433a-abc5-cc1fd5ae6719}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\network_chat_manager">
+      <UniqueIdentifier>{6f67b124-2293-4be8-a33c-7e406efb16d6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="libs">
+      <UniqueIdentifier>{f856873c-d05f-4098-853f-66cf12cf230b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="libs\ImGui">
+      <UniqueIdentifier>{d4cc7421-7d37-491e-be9f-5a616c8958d8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="libs\DXWF">
+      <UniqueIdentifier>{abc24220-6363-46fe-aa59-9445fb2d3439}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\gui">
+      <UniqueIdentifier>{9445fced-8775-440b-a445-2fee979a2390}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\iterator">
+      <UniqueIdentifier>{4ff70447-ba79-414c-95a6-503de8e79976}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\gui\chat_gui">
+      <UniqueIdentifier>{0df277a1-cadf-4cde-9e11-715034f892aa}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\window">
+      <UniqueIdentifier>{1d0e247d-77b5-4b61-b5c6-d905af2914e2}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="src\includes.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="src\chat\chat.h">
+      <Filter>src\chat</Filter>
+    </ClInclude>
+    <ClInclude Include="src\network\network.h">
+      <Filter>src\network</Filter>
+    </ClInclude>
+    <ClInclude Include="src\structures\structures.h">
+      <Filter>src\structures</Filter>
+    </ClInclude>
+    <ClInclude Include="src\globals\globals.h">
+      <Filter>src\globals</Filter>
+    </ClInclude>
+    <ClInclude Include="src\network_chat_manager\network_chat_manager.h">
+      <Filter>src\network_chat_manager</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libs\ImGui\imconfig.h">
+      <Filter>libs\ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libs\ImGui\imgui.h">
+      <Filter>libs\ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libs\ImGui\imgui_fonts.h">
+      <Filter>libs\ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libs\ImGui\imgui_impl_dx9.h">
+      <Filter>libs\ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libs\ImGui\imgui_impl_dx11.h">
+      <Filter>libs\ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libs\ImGui\imgui_impl_win32.h">
+      <Filter>libs\ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libs\ImGui\imgui_internal.h">
+      <Filter>libs\ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libs\ImGui\imstb_rectpack.h">
+      <Filter>libs\ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libs\ImGui\imstb_textedit.h">
+      <Filter>libs\ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libs\ImGui\imstb_truetype.h">
+      <Filter>libs\ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libs\DXWF\framework.h">
+      <Filter>libs\DXWF</Filter>
+    </ClInclude>
+    <ClInclude Include="src\iterator\iterator.h">
+      <Filter>src\iterator</Filter>
+    </ClInclude>
+    <ClInclude Include="src\gui\gui.h">
+      <Filter>src\gui</Filter>
+    </ClInclude>
+    <ClInclude Include="src\gui\chat_gui\chat_gui.h">
+      <Filter>src\gui\chat_gui</Filter>
+    </ClInclude>
+    <ClInclude Include="src\window\window.h">
+      <Filter>src\window</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="src\chat client.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\chat\chat.cpp">
+      <Filter>src\chat</Filter>
+    </ClCompile>
+    <ClCompile Include="src\network\network.cpp">
+      <Filter>src\network</Filter>
+    </ClCompile>
+    <ClCompile Include="src\globals\globals.cpp">
+      <Filter>src\globals</Filter>
+    </ClCompile>
+    <ClCompile Include="src\network_chat_manager\network_chat_manager.cpp">
+      <Filter>src\network_chat_manager</Filter>
+    </ClCompile>
+    <ClCompile Include="..\libs\ImGui\imgui.cpp">
+      <Filter>libs\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\libs\ImGui\imgui_demo.cpp">
+      <Filter>libs\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\libs\ImGui\imgui_draw.cpp">
+      <Filter>libs\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\libs\ImGui\imgui_impl_dx9.cpp">
+      <Filter>libs\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\libs\ImGui\imgui_impl_dx11.cpp">
+      <Filter>libs\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\libs\ImGui\imgui_impl_win32.cpp">
+      <Filter>libs\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\libs\ImGui\imgui_tables.cpp">
+      <Filter>libs\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\libs\ImGui\imgui_widgets.cpp">
+      <Filter>libs\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="src\iterator\iterator.cpp">
+      <Filter>src\iterator</Filter>
+    </ClCompile>
+    <ClCompile Include="src\gui\gui.cpp">
+      <Filter>src\gui</Filter>
+    </ClCompile>
+    <ClCompile Include="src\gui\chat_gui\chat_gui.cpp">
+      <Filter>src\gui\chat_gui</Filter>
+    </ClCompile>
+    <ClCompile Include="src\window\window.cpp">
+      <Filter>src\window</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <Library Include="..\libs\DXWF\DXWF.lib">
+      <Filter>libs\DXWF</Filter>
+    </Library>
+  </ItemGroup>
+</Project>
