@@ -26,31 +26,14 @@ void NetworkHandleThread(void* arg)
 
 	delete NetworkThreadArg;
 
-	auto th = CreateThread(nullptr, 0, (LPTHREAD_START_ROUTINE)[](void* arg) -> DWORD {
-		
-		while (true)
-		{
-			g_pNetworkChatManager->ReceivePacketsRoutine();
-			std::this_thread::sleep_for(std::chrono::microseconds(1));
-		}
-		return 0;
-
-		}, nullptr, 0, nullptr);
-
-	if (th)
+	while (!g_pNetworkChatManager->IsNeedExit())
 	{
-		while (!g_pNetworkChatManager->IsNeedExit())
-		{
-			std::this_thread::sleep_for(std::chrono::microseconds(1));
-		}
-
-		TerminateThread(th, 0);
-		CloseHandle(th);
-
-		g_pNetworkChatManager->~CNetworkChatManager();
-		g_pNetworkChatManager.release();
-		g_pNetworkChatManager = nullptr;
+		g_pNetworkChatManager->ReceivePacketsRoutine();
+		std::this_thread::sleep_for(std::chrono::microseconds(1));
 	}
+
+	g_pNetworkChatManager.reset();
+	g_pNetworkChatManager = nullptr;
 
 	AppMode = NOT_INITIALIZED;
 
