@@ -46,3 +46,5 @@ constexpr auto MAX_USERNAME_SIZE = 32;
 constexpr auto MAX_MESSAGE_TEXT_SIZE = 4096;
 
 constexpr auto CLIENT_SOCKET = 0;
+
+constexpr auto MAX_PROCESSED_USERS_IN_CHAT = 10;

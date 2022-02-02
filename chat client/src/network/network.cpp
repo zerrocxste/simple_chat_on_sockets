@@ -48,10 +48,10 @@ bool CNetwork::SendPacket(void* pPacket, int iSize, SOCKET IgonreSocket)
 			continue;
 
 		if (send(Socket, (const char*)&iSize, sizeof(int), NULL) == SOCKET_ERROR)
-			return false;
+			continue;
 
 		if (send(Socket, (const char*)pPacket, iSize, NULL) == SOCKET_ERROR)
-			return false;
+			continue;
 	}
 
 	return true;
@@ -89,6 +89,9 @@ void CNetwork::DropConnections()
 	{
 		auto& CurrentMap = *it;
 		auto& Client = CurrentMap.second;
+
+		if (!Client.m_ConnectionSocket)
+			continue;
 
 		closesocket(Client.m_ConnectionSocket);
 		TerminateThread(Client.m_ThreadHandle, 0);
@@ -152,15 +155,15 @@ bool CNetwork::InitializeAsHost()
 
 			struct host_receive_thread_arg
 			{
-				CNetwork* Network;
-				client_reciev_data_thread* Client;
-			} HostReceiveThreadArg;
+				CNetwork* m_Network;
+				client_receive_data_thread* m_CurrentClient;
+			};
 
 			auto ReceiveThread = [](void* arg) -> DWORD
 			{
 				auto HostReceiveThreadArg = (host_receive_thread_arg*)arg;
-				auto _this = HostReceiveThreadArg->Network;
-				auto Client = HostReceiveThreadArg->Client;
+				auto _this = HostReceiveThreadArg->m_Network;
+				auto Client = HostReceiveThreadArg->m_CurrentClient;
 
 				while (true)
 				{
@@ -168,13 +171,23 @@ bool CNetwork::InitializeAsHost()
 
 					auto recv_ret = recv(Client->m_ConnectionSocket, (char*)&DataSize, sizeof(int), NULL);
 
-					if (recv_ret > 0 && DataSize)
+					if (recv_ret > 0)
 					{
-						auto pData = new char[DataSize];
-						recv(Client->m_ConnectionSocket, (char*)pData, DataSize, NULL);
-						net_packet* packet = new net_packet(pData, DataSize);
-						_this->SendPacket(packet->m_pPacket, packet->m_iSize, Client->m_ConnectionSocket);
-						Client->m_pNetPacket = packet;
+						if (DataSize)
+						{
+							printf("[+] Received data at client: %d, data size: %d\n", Client->m_iThreadId, DataSize);
+							auto pData = new char[DataSize];
+							recv(Client->m_ConnectionSocket, (char*)pData, DataSize, NULL);
+							net_packet* packet = new net_packet(pData, DataSize);
+							_this->SendPacket(packet->m_pPacket, packet->m_iSize, Client->m_ConnectionSocket);
+							Client->m_pNetPacket = packet;
+						}
+					}
+					else
+					{
+						printf("[+] Dropped connection at client: %d\n", Client->m_iThreadId);
+						_this->DisconnectUser(Client->m_iThreadId);
+						break;
 					}
 				}
 
@@ -183,8 +196,9 @@ bool CNetwork::InitializeAsHost()
 
 			auto& Client = _this->m_Clients[_this->m_iConnectionCount];
 			Client.m_ConnectionSocket = Connection;
-			HostReceiveThreadArg.Network = _this;
-			HostReceiveThreadArg.Client = &Client;
+			host_receive_thread_arg	HostReceiveThreadArg{};
+			HostReceiveThreadArg.m_Network = _this;
+			HostReceiveThreadArg.m_CurrentClient = &Client;
 			Client.m_ThreadHandle = CreateThread(nullptr, 0, (LPTHREAD_START_ROUTINE)ReceiveThread, &HostReceiveThreadArg, 0, nullptr);
 			Client.m_iThreadId = _this->m_iConnectionCount;
 
@@ -214,29 +228,34 @@ bool CNetwork::InitializeAsClient()
 	auto ReceiveThread = [](void* arg) -> DWORD
 	{
 		auto _this = (CNetwork*)arg;
-		auto& Client = _this->m_Clients[CLIENT_SOCKET];
+		auto Client = &_this->m_Clients[CLIENT_SOCKET];
 
 		while (true)
 		{
 			int DataSize = 0;
 
-			auto recv_ret = recv(Client.m_ConnectionSocket, (char*)&DataSize, sizeof(int), NULL);
+			auto recv_ret = recv(Client->m_ConnectionSocket, (char*)&DataSize, sizeof(int), NULL);
 
 			if (recv_ret > 0)
 			{
 				if (DataSize)
 				{
+					printf("[+] Received data from host, size: %d\n", DataSize);
 					auto pData = new char[DataSize];
-					recv(Client.m_ConnectionSocket, (char*)pData, DataSize, NULL);
+					recv(Client->m_ConnectionSocket, (char*)pData, DataSize, NULL);
 					net_packet* packet = new net_packet(pData, DataSize);
-					Client.m_pNetPacket = packet;
+					Client->m_pNetPacket = packet;
 				}
 			}
 			else
 			{
+				printf("[+] Host was downed\n");
 				_this->m_bServerWasDowned = true;
+				break;
 			}
 		}
+
+		return 0;
 	};
 
 	auto& Client = this->m_Clients[CLIENT_SOCKET];
@@ -274,8 +293,10 @@ int CNetwork::GetConnectedUsersCount()
 		auto& CurrentMap = *it;
 		auto& Socket = CurrentMap.second.m_ConnectionSocket;
 
-		if (Socket)
-			ret++;
+		if (!Socket)
+			continue;
+
+		ret++;
 	}
 
 	return ret;

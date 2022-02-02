@@ -9,7 +9,7 @@ void NetworkHandleThread(void* arg)
 	auto IsHost = NetworkThreadArg->bIsHost;
 	auto szUsername = NetworkThreadArg->szUsername;
 
-	g_pNetworkChatManager = std::make_unique<CNetworkChatManager>(IsHost, szUsername, (char*)"127.0.0.1", 80);
+	g_pNetworkChatManager = std::make_unique<CNetworkChatManager>(IsHost, szUsername, (char*)"127.0.0.1", 80, MAX_PROCESSED_USERS_IN_CHAT);
 
 	printf("[+] %s -> Start initialize network at: %s\n", __FUNCTION__, IsHost ? "HOST" : "CLIENT");
 

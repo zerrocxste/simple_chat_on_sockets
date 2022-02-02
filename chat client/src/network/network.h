@@ -1,4 +1,4 @@
-struct client_reciev_data_thread
+struct client_receive_data_thread
 {
 	SOCKET m_ConnectionSocket;
 	HANDLE m_ThreadHandle;
@@ -19,7 +19,7 @@ private:
 	WSADATA m_WSAdata;
 	PSOCKADDR_IN m_pSockAddrIn;
 	SOCKET m_Socket;
-	std::map<std::size_t, client_reciev_data_thread> m_Clients;
+	std::map<int, client_receive_data_thread> m_Clients;
 	std::size_t m_iConnectionCount;
 	HANDLE m_HandleThreadConnectionsHost;
 	bool m_bServerWasDowned;

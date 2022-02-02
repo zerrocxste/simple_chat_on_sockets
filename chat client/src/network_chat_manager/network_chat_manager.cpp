@@ -1,11 +1,15 @@
 #include "../includes.h"
 
-CNetworkChatManager::CNetworkChatManager(bool IsHost, char* szUsername, char* pszIP, int iPort) : m_bIsInitialized(false), m_bIsHost(IsHost), m_bNeedExit(false)
+CNetworkChatManager::CNetworkChatManager(bool IsHost, char* szUsername, char* pszIP, int iPort, int iMaxProcessedUsersNumber) : 
+	m_bIsInitialized(false),
+	m_bIsHost(IsHost), 
+	m_bNeedExit(false),
+	m_iMaxProcessedUsersNumber(iMaxProcessedUsersNumber)
 {
 	printf("[+] %s -> Contructor called\n", __FUNCTION__);
 
 	memcpy(this->m_szUsername, szUsername, strlen(szUsername) + NULL_TERMINATE_BYTE_SIZE);
-	this->m_pNetwork = new CNetwork(this->m_bIsHost, pszIP, iPort, 5);
+	this->m_pNetwork = new CNetwork(this->m_bIsHost, pszIP, iPort, m_iMaxProcessedUsersNumber);
 	this->m_pChatData = new CChatData();
 }
 
