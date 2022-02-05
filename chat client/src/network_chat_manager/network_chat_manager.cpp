@@ -115,6 +115,7 @@ bool CNetworkChatManager::SendNewMessage(char* szmessage)
 
 	memcpy(pPacket + sizeof(int), this->m_szUsername, iUsernameSize);
 	*(pPacket + sizeof(int) + iUsernameSize) = NULL_TERMINATE_BYTE;
+
 	memcpy(pPacket + sizeof(int) + iUsernameSize + NULL_TERMINATE_BYTE_SIZE, szmessage, iMessageSize);
 	*(pPacket + iPacketSize - NULL_TERMINATE_BYTE_SIZE) = NULL_TERMINATE_BYTE;
 
