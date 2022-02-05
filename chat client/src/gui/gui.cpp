@@ -27,14 +27,11 @@ bool Gui::Initialize(HWND hWnd, LPDIRECT3DDEVICE9 pD3d9Device)
 
 	auto& io = ImGui::GetIO();
 
-	/*io.Fonts->AddFontFromFileTTF("C:\\Windows\\Fonts\\Arial.ttf", 18.9f, NULL, ImGui::GetIO().Fonts->GetGlyphRangesCyrillic());
-	fTitle = io.Fonts->AddFontFromFileTTF("C:\\Windows\\Fonts\\Arial.ttf", 30.f, NULL, ImGui::GetIO().Fonts->GetGlyphRangesCyrillic());*/
-
 	io.Fonts->AddFontFromMemoryTTF(Montserrat_Light, IM_ARRAYSIZE(Montserrat_Light), 18.9f, NULL, ImGui::GetIO().Fonts->GetGlyphRangesCyrillic());
 	fTitle = io.Fonts->AddFontFromMemoryTTF(Stolzl_Light, IM_ARRAYSIZE(Stolzl_Light), 30.f, NULL, ImGui::GetIO().Fonts->GetGlyphRangesCyrillic());
 
-	ImGui_ImplWin32_Init(DXWFGetHWND());
-	ImGui_ImplDX9_Init(DXWFGetD3DDevice());
+	ImGui_ImplWin32_Init(hWnd);
+	ImGui_ImplDX9_Init(pD3d9Device);
 	ImGui_ImplDX9_CreateDeviceObjects();
 
 	return true;
@@ -64,13 +61,19 @@ bool Gui::BuildNewDesktopStyleWindow(const char* pszTitle, bool* pBackButtonArg)
 	static bool bOpened = true;
 
 	ImGui::SetNextWindowPos(ImVec2(), ImGuiCond_Always);
+
 	ImGui::SetNextWindowSize(ImGui::GetIO().DisplaySize, ImGuiCond_Always);
-	auto bBeginStatus = ImGui::Begin(pszTitle, &bOpened, ImGuiWindowFlags_::ImGuiWindowFlags_NoResize | ImGuiWindowFlags_::ImGuiWindowFlags_NoMove | ImGuiWindowFlags_::ImGuiWindowFlags_NoCollapse, pBackButtonArg);
+
+	auto bBeginStatus = ImGui::Begin(
+		pszTitle,
+		&bOpened, 
+		ImGuiWindowFlags_::ImGuiWindowFlags_NoResize | ImGuiWindowFlags_::ImGuiWindowFlags_NoMove | ImGuiWindowFlags_::ImGuiWindowFlags_NoCollapse,
+		pBackButtonArg);
 
 	if (!bOpened)
 		PostQuitMessage(0);
 
-	return bOpened && bBeginStatus;
+	return bBeginStatus;
 }
 
 void Gui::EndWindow()

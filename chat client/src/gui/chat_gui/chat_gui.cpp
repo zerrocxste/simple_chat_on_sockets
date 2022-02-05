@@ -178,7 +178,8 @@ void ChatGui::DrawChat(bool* baBackButton)
 		AppMode = NOT_INITIALIZED;
 	}
 
-	Widgets::Title("Chat");
+	auto szTitle = AppMode == HOST ? "Chat | Host mode" : "Chat";
+	Widgets::Title(szTitle);
 	ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 10.f);
 
 	ImGui::BeginChild("##ChatBox", ImVec2(vContentRegionAvail.x, vContentRegionAvail.y - 93.f));
@@ -186,7 +187,7 @@ void ChatGui::DrawChat(bool* baBackButton)
 		for (auto it = g_pNetworkChatManager->GetChatData()->Begin(); it != g_pNetworkChatManager->GetChatData()->End(); it++)
 		{
 			auto message = **it;
-			ImGui::Text("[%s] %s", message->m_szUsername, message->m_szMessage);
+			ImGui::Text("%s: %s", message->m_szUsername, message->m_szMessage);
 		}
 	}
 	ImGui::EndChild();
@@ -195,9 +196,11 @@ void ChatGui::DrawChat(bool* baBackButton)
 	static char szBuff[MAX_MESSAGE_TEXT_SIZE] = { NULL };
 
 	const static auto vSendButtonSize = ImVec2(50.f, 25.f);
+
 	ImGui::SetNextItemWidth(vContentRegionAvail.x - vSendButtonSize.x - 5.f);
 	if (ImGui::InputText("##Input", szBuff, MAX_MESSAGE_TEXT_SIZE, ImGuiInputTextFlags_::ImGuiInputTextFlags_EnterReturnsTrue))
 		bSendMessage = true;
+
 	auto InputItemID = ImGui::GetItemID();
 
 	ImGui::SameLine();

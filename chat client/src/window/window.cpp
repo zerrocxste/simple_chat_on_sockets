@@ -49,6 +49,8 @@ bool Window::BuildWindow(HINSTANCE hInstance, const char* pszWindowName, int iSi
 
 	DXWFRenderLoop();
 
+	printf("[+] Post renderloop\n");
+
 	DXWFTerminate();
 
 	return true;
