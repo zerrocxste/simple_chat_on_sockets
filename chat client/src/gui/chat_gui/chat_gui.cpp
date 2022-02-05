@@ -2,13 +2,29 @@
 
 APP_MODE AppMode = NOT_INITIALIZED;
 
-void NetworkHandleThread(void* arg)
+void NetworkShutdown()
 {
-	auto NetworkThreadArg = (network_thread_arg*)arg;
+	g_pNetworkChatManager->Shutdown();
+}
 
-	auto IsHost = NetworkThreadArg->bIsHost;
-	auto szUsername = NetworkThreadArg->szUsername;
+bool NetworkHandle()
+{
+	if (g_pNetworkChatManager->IsNeedExit())
+	{
+		g_pNetworkChatManager.reset();
+		g_pNetworkChatManager = nullptr;
+		AppMode = NOT_INITIALIZED;
+		printf("[+] %s -> Connection shutdowned\n", __FUNCTION__);
+		return false;
+	}
 
+	g_pNetworkChatManager->ReceivePacketsRoutine();
+
+	return true;
+}
+
+void ChatGui::StartupNetwork(bool IsHost, char szUsername[32])
+{
 	g_pNetworkChatManager = std::make_unique<CNetworkChatManager>(IsHost, szUsername, (char*)"127.0.0.1", 80, MAX_PROCESSED_USERS_IN_CHAT);
 
 	printf("[+] %s -> Start initialize network at: %s\n", __FUNCTION__, IsHost ? "HOST" : "CLIENT");
@@ -22,43 +38,21 @@ void NetworkHandleThread(void* arg)
 	}
 
 	printf("[+] %s -> Network initialized. %s.get(): 0x%p\n", __FUNCTION__, VAR_NAME(g_pNetworkChatManager), g_pNetworkChatManager.get());
+
 	IsHost ? AppMode = HOST : AppMode = CLIENT;
-
-	delete NetworkThreadArg;
-
-	while (!g_pNetworkChatManager->IsNeedExit())
-	{
-		g_pNetworkChatManager->ReceivePacketsRoutine();
-		std::this_thread::sleep_for(std::chrono::microseconds(1));
-	}
-
-	g_pNetworkChatManager.reset();
-	g_pNetworkChatManager = nullptr;
-
-	AppMode = NOT_INITIALIZED;
-
-	printf("[+] %s -> Connection shutdowned\n", __FUNCTION__);
-}
-
-void ChatGui::StartupNetwork(bool IsHost, char szUsername[32])
-{
-	network_thread_arg* pNetWorkThreadArg = new network_thread_arg;
-
-	pNetWorkThreadArg->bIsHost = IsHost;
-	memcpy(pNetWorkThreadArg->szUsername, szUsername, MAX_USERNAME_SIZE);
-
-	auto th = CreateThread(nullptr, 0, (LPTHREAD_START_ROUTINE)NetworkHandleThread, pNetWorkThreadArg, 0, nullptr);
-
-	if (th)
-		CloseHandle(th);
 }
 
 void ChatGui::Draw(bool* baBackButton)
 {
 	if (AppMode == NOT_INITIALIZED)
-		ChatGui::SelectChatMode();
+		ChatGui::SelectChatMode(baBackButton);
 	else
+	{
+		if (!NetworkHandle())
+			return;
+
 		ChatGui::DrawChat(baBackButton);
+	}
 }
 
 bool ChatGui::GuiSelectMode(bool* pbOutIsHost)
@@ -88,8 +82,10 @@ bool ChatGui::GuiSelectMode(bool* pbOutIsHost)
 	return ret;
 }
 
-bool ChatGui::GuiEnterUsername(char* szOutUsername)
+bool ChatGui::GuiEnterUsername(char* szOutUsername, bool* baBackButton, int* ChatModePage)
 {
+	baBackButton[BACK_BUTTON_ALLOWED] = true;
+
 	auto ret = false;
 
 	auto vContentRegionAvail = ImGui::GetContentRegionMax();
@@ -112,18 +108,18 @@ bool ChatGui::GuiEnterUsername(char* szOutUsername)
 	if (bSendUsername && strlen(szOutUsername) > 0)
 		ret = true;
 
+	if (baBackButton[BACK_BUTTON_PRESSED])
+	{
+		memset(szOutUsername, 0, MAX_USERNAME_SIZE);
+		*ChatModePage = SELECT_MODE;
+	}
+
 	return ret;
 }
 
-void ChatGui::SelectChatMode()
+void ChatGui::SelectChatMode(bool* baBackButton)
 {
 	Widgets::Title("Start as");
-
-	enum
-	{
-		SELECT_MODE,
-		ENTER_USERNAME
-	};
 
 	static int ChatModePage = SELECT_MODE;
 	static bool bIsNextHost = false;
@@ -139,7 +135,7 @@ void ChatGui::SelectChatMode()
 	}
 	else if (ChatModePage == ENTER_USERNAME)
 	{
-		if (!GuiEnterUsername(szUsername))
+		if (!GuiEnterUsername(szUsername, baBackButton, &ChatModePage))
 			return;
 	}
 
@@ -173,10 +169,7 @@ void ChatGui::DrawChat(bool* baBackButton)
 	baBackButton[BACK_BUTTON_ALLOWED] = true;
 	
 	if (baBackButton[BACK_BUTTON_PRESSED])
-	{
-		g_pNetworkChatManager->Shutdown();
-		AppMode = NOT_INITIALIZED;
-	}
+		NetworkShutdown();
 
 	auto szTitle = AppMode == HOST ? "Chat | Host mode" : "Chat";
 	Widgets::Title(szTitle);

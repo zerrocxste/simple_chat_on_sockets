@@ -89,7 +89,6 @@ void Gui::BuildScene()
 
 	if (BuildNewDesktopStyleWindow(pszApplicationName, baBackButton))
 	{
-		baBackButton[BACK_BUTTON_ALLOWED] = false;
 		ChatGui::Draw(baBackButton);
 		EndWindow();
 	}

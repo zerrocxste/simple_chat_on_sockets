@@ -6368,12 +6368,18 @@ bool ImGui::Begin(const char* name, bool* p_open, ImGuiWindowFlags flags, bool* 
             NavInitWindow(window, false); // <-- this is in the way for us to be able to defer and sort reappearing FocusWindow() calls
         }
 
+       /* if (p_back != nullptr)   
+        baBackButton[BACK_BUTTON_ALLOWED] = false;*/
+
         if (p_back != nullptr)
-            p_back[1] = false;
+            p_back[BACK_BUTTON_PRESSED] = false;
 
         // Title bar
         if (!(flags & ImGuiWindowFlags_NoTitleBar))
             RenderWindowTitleBarContents(window, ImRect(title_bar_rect.Min.x + window->WindowBorderSize, title_bar_rect.Min.y, title_bar_rect.Max.x - window->WindowBorderSize, title_bar_rect.Max.y), name, p_open, p_back);
+
+        if (p_back != nullptr)
+           p_back[BACK_BUTTON_ALLOWED] = false;
 
         // Clear hit test shape every frame
         window->HitTestHoleSize.x = window->HitTestHoleSize.y = 0;
