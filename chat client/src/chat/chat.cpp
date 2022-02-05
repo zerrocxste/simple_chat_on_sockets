@@ -93,12 +93,12 @@ pMessage CChatData::AllocateNewMessagePointer(size_t size_username, size_t size_
 
 	this->m_ppMessagesArray = (ppArrayMessages)realloc(this->m_ppMessagesArray, (this->m_mMessagesArraySize * PointerSize) + PointerSize);
 
-	this->m_ppMessagesArray[this->m_mMessagesArraySize] = (pMessage)realloc(NULL, sizeof(Message));
+	this->m_ppMessagesArray[this->m_mMessagesArraySize] = (pMessage)realloc(nullptr, sizeof(Message));
 
-	this->m_ppMessagesArray[this->m_mMessagesArraySize]->m_szUsername = (char*)realloc(NULL, size_username + 1);
+	this->m_ppMessagesArray[this->m_mMessagesArraySize]->m_szUsername = (char*)realloc(nullptr, size_username + 1);
 	memset(this->m_ppMessagesArray[this->m_mMessagesArraySize]->m_szUsername, 0, size_username + 1);
 
-	this->m_ppMessagesArray[this->m_mMessagesArraySize]->m_szMessage = (char*)realloc(NULL, size_message + 1);
+	this->m_ppMessagesArray[this->m_mMessagesArraySize]->m_szMessage = (char*)realloc(nullptr, size_message + 1);
 	memset(this->m_ppMessagesArray[this->m_mMessagesArraySize]->m_szMessage, 0, size_message + 1);
 
 	printf("[+] %s. Allocated memory for message packet. packet va: %p, username va: %p, message va: %p\n", __FUNCTION__,
@@ -124,7 +124,7 @@ void CChatData::CleanupData()
 {
 	for (auto it = Begin(); it < End(); it++)
 	{
-		auto message = **it;
+		auto message = *it;
 
 		if (!message)
 			continue;

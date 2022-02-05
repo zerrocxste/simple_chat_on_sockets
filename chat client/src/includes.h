@@ -43,7 +43,6 @@
 #include "structures/structures.h"
 
 #include "window/window.h"
-#include "iterator/iterator.h"
 #include "chat/chat.h"
 #include "network/network.h"
 #include "network_chat_manager/network_chat_manager.h"

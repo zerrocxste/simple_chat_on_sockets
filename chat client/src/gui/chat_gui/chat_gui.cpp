@@ -186,7 +186,7 @@ void ChatGui::DrawChat(bool* baBackButton)
 	{
 		for (auto it = g_pNetworkChatManager->GetChatData()->Begin(); it != g_pNetworkChatManager->GetChatData()->End(); it++)
 		{
-			auto message = **it;
+			auto message = *it;
 			ImGui::Text("%s: %s", message->m_szUsername, message->m_szMessage);
 		}
 	}

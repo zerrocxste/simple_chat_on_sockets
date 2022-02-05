@@ -2,9 +2,7 @@ struct client_receive_data_thread
 {
 	SOCKET m_ConnectionSocket;
 	HANDLE m_ThreadHandle;
-	HANDLE m_CloseThreadEvent;
 	int m_iThreadId;
-	net_packet* m_pNetPacket;
 };
 
 class CNetwork
@@ -22,8 +20,8 @@ private:
 	SOCKET m_Socket;
 	std::map<int, client_receive_data_thread> m_ClientsList;
 	int m_iConnectionCount;
-	std::vector<net_packet*> m_NotSendedPacketsList, m_SendedPacketsList;
-	HANDLE m_HandleThreadConnectionsHost;
+	std::vector<net_packet*> m_PacketsList;
+	HANDLE m_hThreadConnectionsHost;
 	bool m_bServerWasDowned;
 
 	bool InitializeAsHost();
@@ -31,9 +29,7 @@ private:
 	bool SendPacket(void* pPacket, int iSize, SOCKET IgonreSocket);
 	bool ReceivePacket(net_packet* pPacket);
 	void DropConnections();
-	void FreePackets();
 	void DisconnectClient(client_receive_data_thread* Client);
-	
 public:
 	CNetwork(bool IsHost, char* pszIP, int iPort, int iMaxProcessedUsersNumber);
 	~CNetwork();

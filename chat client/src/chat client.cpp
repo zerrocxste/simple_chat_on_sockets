@@ -28,7 +28,5 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevHistance, LPSTR pszCmd, i
 	if (!Window::BuildWindow(hInstance, pszApplicationName, iWindowSize[0], iWindowSize[1], iWindowPositon[0], iWindowPositon[1]))
 		MessageBox(NULL, "Failed build window", pszApplicationName, MB_OK | MB_ICONERROR);
 
-	printf("[+] Application terminates\n");
-
 	return 0;
 }

@@ -31,9 +31,6 @@
     <Filter Include="src\gui">
       <UniqueIdentifier>{9445fced-8775-440b-a445-2fee979a2390}</UniqueIdentifier>
     </Filter>
-    <Filter Include="src\iterator">
-      <UniqueIdentifier>{4ff70447-ba79-414c-95a6-503de8e79976}</UniqueIdentifier>
-    </Filter>
     <Filter Include="src\gui\chat_gui">
       <UniqueIdentifier>{0df277a1-cadf-4cde-9e11-715034f892aa}</UniqueIdentifier>
     </Filter>
@@ -93,9 +90,6 @@
     <ClInclude Include="..\libs\DXWF\framework.h">
       <Filter>libs\DXWF</Filter>
     </ClInclude>
-    <ClInclude Include="src\iterator\iterator.h">
-      <Filter>src\iterator</Filter>
-    </ClInclude>
     <ClInclude Include="src\gui\gui.h">
       <Filter>src\gui</Filter>
     </ClInclude>
@@ -145,9 +139,6 @@
     </ClCompile>
     <ClCompile Include="..\libs\ImGui\imgui_widgets.cpp">
       <Filter>libs\ImGui</Filter>
-    </ClCompile>
-    <ClCompile Include="src\iterator\iterator.cpp">
-      <Filter>src\iterator</Filter>
     </ClCompile>
     <ClCompile Include="src\gui\gui.cpp">
       <Filter>src\gui</Filter>

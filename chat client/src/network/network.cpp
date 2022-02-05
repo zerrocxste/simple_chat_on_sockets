@@ -10,7 +10,7 @@ CNetwork::CNetwork(bool IsHost, char* pszIP, int iPort, int iMaxProcessedUsersNu
 	m_Socket(0),
 	m_bServerWasDowned(false),
 	m_iConnectionCount(0),
-	m_HandleThreadConnectionsHost(0)
+	m_hThreadConnectionsHost(0)
 {
 	printf("[+] %s -> Contructor called\n", __FUNCTION__);
 
@@ -23,7 +23,6 @@ CNetwork::~CNetwork()
 
 	closesocket(this->m_Socket);
 	DropConnections();
-	FreePackets();
 	WSACleanup();
 }
 
@@ -46,8 +45,7 @@ bool CNetwork::SendPacket(void* pPacket, int iSize, SOCKET IgonreSocket)
 		if (send(Socket, (const char*)&iSize, sizeof(int), NULL) == SOCKET_ERROR)
 			continue;
 
-		if (send(Socket, (const char*)pPacket, iSize, NULL) == SOCKET_ERROR)
-			continue;
+		send(Socket, (const char*)pPacket, iSize, NULL);
 	}
 
 	return true;
@@ -60,24 +58,19 @@ bool CNetwork::SendPacket(void* pPacket, int iSize)
 
 bool CNetwork::ReceivePacket(net_packet* pPacket)
 {
-	for (auto it = this->m_ClientsList.begin(); it != this->m_ClientsList.end(); it++)
-	{
-		auto& CurrentMap = *it;
-		auto& Client = CurrentMap.second;
+	if (!this->m_PacketsList.size())
+		return false;
 
-		if (!Client.m_ConnectionSocket)
-			continue;
+	auto it = this->m_PacketsList.begin();
+	auto NetPacket = *it;
 
-		if (!Client.m_pNetPacket)
-			continue;
+	if (!NetPacket)
+		return false;
 
-		this->m_SendedPacketsList.push_back(Client.m_pNetPacket);
-		*pPacket = *Client.m_pNetPacket;
-		Client.m_pNetPacket = nullptr;
-		return true;
-	}
+	*pPacket = *NetPacket;
+	this->m_PacketsList.erase(it);
 
-	return false;
+	return true;
 }
 
 void CNetwork::DropConnections()
@@ -91,15 +84,6 @@ void CNetwork::DropConnections()
 			continue;
 		
 		shutdown(Client.m_ConnectionSocket, SD_BOTH);
-	}
-}
-
-void CNetwork::FreePackets()
-{
-	for (auto it = this->m_SendedPacketsList.begin(); it < this->m_SendedPacketsList.end(); it++)
-	{
-		auto Packet = *it;
-		delete Packet;
 	}
 }
 
@@ -144,7 +128,7 @@ bool CNetwork::InitializeAsHost()
 		return false;
 	}
 
-	this->m_HandleThreadConnectionsHost = CreateThread(nullptr, 0, (LPTHREAD_START_ROUTINE)[](void* arg) -> DWORD {
+	this->m_hThreadConnectionsHost = CreateThread(nullptr, 0, (LPTHREAD_START_ROUTINE)[](void* arg) -> DWORD {
 		
 		auto _this = (CNetwork*)arg;
 
@@ -196,9 +180,9 @@ bool CNetwork::InitializeAsHost()
 							printf("[+] %s ->  Received data at clientid: %d, data size: %d\n", "CNetwork::InitializeAsHost(Data receiver lambda)", Client->m_iThreadId, DataSize);
 							auto pData = new char[DataSize];
 							recv(Client->m_ConnectionSocket, (char*)pData, DataSize, NULL);
-							net_packet* packet = new net_packet(pData, DataSize);
-							_this->SendPacket(packet->m_pPacket, packet->m_iSize, Client->m_ConnectionSocket);
-							Client->m_pNetPacket = packet;
+							net_packet* NetPacket = new net_packet(pData, DataSize);
+							_this->SendPacket(NetPacket->m_pPacket, NetPacket->m_iSize, Client->m_ConnectionSocket);
+							_this->m_PacketsList.push_back(NetPacket);
 						}
 					}
 					else
@@ -229,7 +213,7 @@ bool CNetwork::InitializeAsHost()
 		
 		}, this, 0, nullptr);
 
-	if (!m_HandleThreadConnectionsHost)
+	if (!m_hThreadConnectionsHost)
 		return false;
 
 	return true;
@@ -263,9 +247,8 @@ bool CNetwork::InitializeAsClient()
 					printf("[+] %s -> Received data from host, size: %d\n", "CNetwork::InitializeAsClient(Data receiver lambda)", DataSize);
 					auto pData = new char[DataSize];
 					recv(Client->m_ConnectionSocket, (char*)pData, DataSize, NULL);
-					net_packet* packet = new net_packet(pData, DataSize);
-					Client->m_pNetPacket = packet;
-					_this->m_NotSendedPacketsList.push_back(Client->m_pNetPacket);
+					net_packet* NetPacket = new net_packet(pData, DataSize);
+					_this->m_PacketsList.push_back(NetPacket);
 				}
 			}
 			else
