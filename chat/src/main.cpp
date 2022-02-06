@@ -1,4 +1,4 @@
-﻿#include "includes.h"
+#include "includes.h"
 
 namespace console
 {
@@ -9,20 +9,30 @@ namespace console
 		freopen_s(&out, "conout$", "w", stdout);
 		MoveWindow(GetConsoleWindow(), 0, 0, 400, 300, FALSE);
 	}
+	void hide()
+	{
+		if (!IsWindowVisible(GetConsoleWindow()))
+			return;
+
+		ShowWindow(GetConsoleWindow(), SW_HIDE);
+	}
 }
 
-int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevHistance, LPSTR pszCmd, int cmd)
+int main()
 {
 #ifdef _USERDEBUG
 	console::attach("debug");
+#else
+	console::hide();
 #endif
+	auto hInstance = GetModuleHandle(nullptr);
 
 	LoadLibrary("dwmapi.dll");
 
 	const int iWindowSize[2] = { 450, 350 };
-	const int iWindowPositon[2] = { 
-		(GetSystemMetrics(SM_CXSCREEN) / 2 ) - (iWindowSize[0] / 2) , 
-		(GetSystemMetrics(SM_CYSCREEN) / 2) - (iWindowSize[1] / 2) 
+	const int iWindowPositon[2] = {
+		(GetSystemMetrics(SM_CXSCREEN) / 2) - (iWindowSize[0] / 2) ,
+		(GetSystemMetrics(SM_CYSCREEN) / 2) - (iWindowSize[1] / 2)
 	};
 
 	if (!Window::BuildWindow(hInstance, pszApplicationName, iWindowSize[0], iWindowSize[1], iWindowPositon[0], iWindowPositon[1]))

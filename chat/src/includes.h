@@ -32,20 +32,21 @@
 #include <d3d9.h>
 #pragma comment (lib, "d3d9.lib")
 
-#include "../../libs/DXWF/framework.h"
-#pragma comment (lib, "../libs/DXWF/DXWF.lib")
+#include "../libs/DXWF/framework.h"
+#pragma comment (lib, "libs/DXWF/DXWF.lib")
 
-#include "../../libs/ImGui/imgui.h"
-#include "../../libs/ImGui/imgui_internal.h"
-#include "../../libs/ImGui/imgui_impl_dx9.h"
-#include "../../libs/ImGui/imgui_impl_win32.h"
+#include "../libs/ImGui/imgui.h"
+#include "../libs/ImGui/imgui_internal.h"
+#include "../libs/ImGui/imgui_impl_dx9.h"
+#include "../libs/ImGui/imgui_impl_win32.h"
 
+#include "defines.h"
 #include "structures/structures.h"
 
 #include "window/window.h"
-#include "chat/chat.h"
+#include "chat_data/chat_data.h"
 #include "network/network.h"
 #include "network_chat_manager/network_chat_manager.h"
 #include "globals/globals.h"
 #include "gui/gui.h"
-#include "gui/chat_gui/chat_gui.h"
+#include "chat/chat.h"

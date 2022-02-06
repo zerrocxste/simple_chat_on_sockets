@@ -1,6 +1,6 @@
 #include "../includes.h"
 
-#include "../../../libs/ImGui/imgui_fonts.h"
+#include "../../libs/ImGui/imgui_fonts.h"
 
 LRESULT ImGui_ImplWin32_WndProcHandler(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
@@ -66,7 +66,7 @@ bool Gui::BuildNewDesktopStyleWindow(const char* pszTitle, bool* pBackButtonArg)
 
 	auto bBeginStatus = ImGui::Begin(
 		pszTitle,
-		&bOpened, 
+		&bOpened,
 		ImGuiWindowFlags_::ImGuiWindowFlags_NoResize | ImGuiWindowFlags_::ImGuiWindowFlags_NoMove | ImGuiWindowFlags_::ImGuiWindowFlags_NoCollapse,
 		pBackButtonArg);
 
@@ -89,7 +89,7 @@ void Gui::BuildScene()
 
 	if (BuildNewDesktopStyleWindow(pszApplicationName, baBackButton))
 	{
-		ChatGui::Draw(baBackButton);
+		Chat::Run(baBackButton);
 		EndWindow();
 	}
 

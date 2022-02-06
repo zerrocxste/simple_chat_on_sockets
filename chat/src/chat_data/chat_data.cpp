@@ -32,7 +32,7 @@ bool CChatData::SendNewMessage(char* szusername, char* szmessage, size_t usernam
 	AddMessage(szusername, username_size, szmessage, message_size, msg_obj);
 
 	IncreaseMessagesCounter();
-	
+
 	return true;
 }
 
@@ -58,7 +58,7 @@ bool CChatData::SendNewMessage(char* szdata, int message_start_after, size_t dat
 	AddMessage(szusername, username_size, szmessage, message_size, msg_obj);
 
 	IncreaseMessagesCounter();
-	
+
 	return true;
 }
 

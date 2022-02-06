@@ -1,11 +1,11 @@
 #include "../includes.h"
 
 CNetwork::CNetwork(bool IsHost, char* pszIP, int iPort, int iMaxProcessedUsersNumber) :
-	m_bIsInitialized(false), 
-	m_bIsHost(IsHost), 
+	m_bIsInitialized(false),
+	m_bIsHost(IsHost),
 	m_iMaxProcessedUsersNumber(iMaxProcessedUsersNumber),
-	m_pszIP(pszIP), 
-	m_IPort(iPort), 
+	m_pszIP(pszIP),
+	m_IPort(iPort),
 	m_pSockAddrIn(new SOCKADDR_IN),
 	m_Socket(0),
 	m_bServerWasDowned(false),
@@ -82,7 +82,7 @@ void CNetwork::DropConnections()
 
 		if (!Client.m_ConnectionSocket)
 			continue;
-		
+
 		shutdown(Client.m_ConnectionSocket, SD_BOTH);
 	}
 }
@@ -129,7 +129,7 @@ bool CNetwork::InitializeAsHost()
 	}
 
 	this->m_hThreadConnectionsHost = CreateThread(nullptr, 0, (LPTHREAD_START_ROUTINE)[](void* arg) -> DWORD {
-		
+
 		auto _this = (CNetwork*)arg;
 
 		while (true)
@@ -144,10 +144,10 @@ bool CNetwork::InitializeAsHost()
 					LastError == WSAEOPNOTSUPP ||
 					LastError == WSAECONNRESET)
 				{
-					
+
 					printf("[-] %s -> Failed to client connection at: %d, Error code: %d\n", "CNetwork::InitializeAsHost(Connection handler lambda)", (int)_this->m_ClientsList.size(), LastError);
 					continue;
-				}	
+				}
 
 				printf("[+] %s -> Shutdown client connection handler thread WSAErrorcode: %d\n", "CNetwork::InitializeAsHost(Connection handler lambda)", LastError);
 				break;
@@ -210,7 +210,7 @@ bool CNetwork::InitializeAsHost()
 		}
 
 		return 0;
-		
+
 		}, this, 0, nullptr);
 
 	if (!m_hThreadConnectionsHost)

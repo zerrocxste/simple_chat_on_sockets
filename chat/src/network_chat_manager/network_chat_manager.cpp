@@ -1,8 +1,8 @@
 #include "../includes.h"
 
-CNetworkChatManager::CNetworkChatManager(bool IsHost, char* szUsername, char* pszIP, int iPort, int iMaxProcessedUsersNumber) : 
+CNetworkChatManager::CNetworkChatManager(bool IsHost, char* szUsername, char* pszIP, int iPort, int iMaxProcessedUsersNumber) :
 	m_bIsInitialized(false),
-	m_bIsHost(IsHost), 
+	m_bIsHost(IsHost),
 	m_bNeedExit(false),
 	m_iMaxProcessedUsersNumber(iMaxProcessedUsersNumber)
 {
@@ -52,7 +52,7 @@ void CNetworkChatManager::ReceivePacketsRoutine()
 
 	if (!HasData)
 		return;
-	
+
 	if (Packet.m_iSize)
 	{
 		printf("[+] %s -> Packet.m_pPacket: %p, Packet.m_iSize: %d\n", __FUNCTION__, Packet.m_pPacket, Packet.m_iSize);
@@ -63,7 +63,7 @@ void CNetworkChatManager::ReceivePacketsRoutine()
 		auto iStringDataStart = (char*)Packet.m_pPacket + iAuthorNameLengthInfo;
 		auto szAuthorName = iStringDataStart;
 		auto szMessage = iStringDataStart + iAuthorNameLength + NULL_TERMINATE_BYTE_SIZE;
-		
+
 		this->m_pChatData->SendNewMessage(szAuthorName, szMessage);
 	}
 }

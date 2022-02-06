@@ -1,0 +1,161 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="libs">
+      <UniqueIdentifier>{a95b0851-244e-4e11-99b3-d190181e420b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="libs\DXWF">
+      <UniqueIdentifier>{650b02c4-1c07-43bd-8273-e58a7f8f8ce5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="libs\ImGui">
+      <UniqueIdentifier>{05f68ac7-e118-4e3f-b2bc-87aae1da302a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src">
+      <UniqueIdentifier>{6efd453d-914d-4095-b2c1-819bed6da40a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\window">
+      <UniqueIdentifier>{8cfe89ac-cc9f-4c23-a88d-e6fb9be6ec35}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\structures">
+      <UniqueIdentifier>{40453fca-ed82-496e-97e8-d7f214b6591f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\network_chat_manager">
+      <UniqueIdentifier>{63e9f797-610e-477f-b3f0-598a006ed34c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\network">
+      <UniqueIdentifier>{2c5edf69-efc7-4a36-abec-4e77a90145de}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\gui">
+      <UniqueIdentifier>{d521200e-6150-466e-b168-f693d4743323}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\globals">
+      <UniqueIdentifier>{745ebabc-82f1-4600-bf92-2f917e8b9c5c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\chat_data">
+      <UniqueIdentifier>{5b3b1bdf-438b-476a-a520-a92b88971a02}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\chat">
+      <UniqueIdentifier>{4cac66b0-31c9-4190-8201-de3a8fa807bf}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="src\main.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="libs\ImGui\imgui.cpp">
+      <Filter>libs\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="libs\ImGui\imgui_demo.cpp">
+      <Filter>libs\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="libs\ImGui\imgui_draw.cpp">
+      <Filter>libs\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="libs\ImGui\imgui_impl_dx9.cpp">
+      <Filter>libs\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="libs\ImGui\imgui_impl_dx11.cpp">
+      <Filter>libs\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="libs\ImGui\imgui_impl_win32.cpp">
+      <Filter>libs\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="libs\ImGui\imgui_tables.cpp">
+      <Filter>libs\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="libs\ImGui\imgui_widgets.cpp">
+      <Filter>libs\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="src\window\window.cpp">
+      <Filter>src\window</Filter>
+    </ClCompile>
+    <ClCompile Include="src\chat\chat.cpp">
+      <Filter>src\chat</Filter>
+    </ClCompile>
+    <ClCompile Include="src\chat_data\chat_data.cpp">
+      <Filter>src\chat_data</Filter>
+    </ClCompile>
+    <ClCompile Include="src\globals\globals.cpp">
+      <Filter>src\globals</Filter>
+    </ClCompile>
+    <ClCompile Include="src\network\network.cpp">
+      <Filter>src\network</Filter>
+    </ClCompile>
+    <ClCompile Include="src\gui\gui.cpp">
+      <Filter>src\gui</Filter>
+    </ClCompile>
+    <ClCompile Include="src\network_chat_manager\network_chat_manager.cpp">
+      <Filter>src\network_chat_manager</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="src\includes.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="libs\DXWF\framework.h">
+      <Filter>libs\DXWF</Filter>
+    </ClInclude>
+    <ClInclude Include="libs\ImGui\imconfig.h">
+      <Filter>libs\ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="libs\ImGui\imgui.h">
+      <Filter>libs\ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="libs\ImGui\imgui_fonts.h">
+      <Filter>libs\ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="libs\ImGui\imgui_impl_dx9.h">
+      <Filter>libs\ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="libs\ImGui\imgui_impl_dx11.h">
+      <Filter>libs\ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="libs\ImGui\imgui_impl_win32.h">
+      <Filter>libs\ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="libs\ImGui\imgui_internal.h">
+      <Filter>libs\ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="libs\ImGui\imstb_rectpack.h">
+      <Filter>libs\ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="libs\ImGui\imstb_textedit.h">
+      <Filter>libs\ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="libs\ImGui\imstb_truetype.h">
+      <Filter>libs\ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="src\defines.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="src\structures\structures.h">
+      <Filter>src\structures</Filter>
+    </ClInclude>
+    <ClInclude Include="src\window\window.h">
+      <Filter>src\window</Filter>
+    </ClInclude>
+    <ClInclude Include="src\chat\chat.h">
+      <Filter>src\chat</Filter>
+    </ClInclude>
+    <ClInclude Include="src\chat_data\chat_data.h">
+      <Filter>src\chat_data</Filter>
+    </ClInclude>
+    <ClInclude Include="src\globals\globals.h">
+      <Filter>src\globals</Filter>
+    </ClInclude>
+    <ClInclude Include="src\network\network.h">
+      <Filter>src\network</Filter>
+    </ClInclude>
+    <ClInclude Include="src\gui\gui.h">
+      <Filter>src\gui</Filter>
+    </ClInclude>
+    <ClInclude Include="src\network_chat_manager\network_chat_manager.h">
+      <Filter>src\network_chat_manager</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Library Include="libs\DXWF\DXWF.lib">
+      <Filter>libs\DXWF</Filter>
+    </Library>
+  </ItemGroup>
+</Project>
