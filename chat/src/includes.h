@@ -50,3 +50,5 @@
 #include "globals/globals.h"
 #include "gui/gui.h"
 #include "chat/chat.h"
+
+extern bool IsLittleEndian();

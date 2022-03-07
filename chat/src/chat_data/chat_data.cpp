@@ -13,49 +13,49 @@ CChatData::~CChatData()
 	CleanupData();
 }
 
-bool CChatData::SendNewMessage(char* szusername, char* szmessage, size_t username_size, size_t message_size)
+bool CChatData::SendNewMessage(char* szUsername, char* szMessage, int iMessageCount, size_t UsernameSize, size_t MessageSize)
 {
-	if (!szusername || !szmessage)
+	if (!szUsername || !szMessage)
 		return false;
 
-	if (!username_size)
-		username_size = strlen(szusername);
+	if (!UsernameSize)
+		UsernameSize = strlen(szUsername);
 
-	if (!message_size)
-		message_size = strlen(szmessage);
+	if (!MessageSize)
+		MessageSize = strlen(szMessage);
 
-	if (!username_size || !message_size)
+	if (!UsernameSize || !MessageSize)
 		return false;
 
-	auto msg_obj = AllocateNewMessagePointer(username_size, message_size);
+	auto MsgObj = AllocateNewMessagePointer(UsernameSize, MessageSize);
 
-	AddMessage(szusername, username_size, szmessage, message_size, msg_obj);
+	AddMessage(szUsername, UsernameSize, szMessage, MessageSize, iMessageCount, MsgObj);
 
 	IncreaseMessagesCounter();
 
 	return true;
 }
 
-bool CChatData::SendNewMessage(char* szdata, int message_start_after, size_t data_size)
+bool CChatData::SendNewMessage(char* szData, int iMessageStartAfter, int iMessageCount, size_t DataSize)
 {
-	if (!szdata)
+	if (!szData)
 		return false;
 
-	if (!data_size)
-		data_size = strlen(szdata);
+	if (!DataSize)
+		DataSize = strlen(szData);
 
-	if (!data_size)
+	if (!DataSize)
 		return false;
 
-	auto szusername = szdata;
-	auto username_size = strlen(szdata);
+	auto szUsername = szData;
+	auto UsernameSize = strlen(szData);
 
-	auto szmessage = szdata + message_start_after;
-	auto message_size = strlen(szmessage);
+	auto szMessage = szData + iMessageStartAfter;
+	auto MessageSize = strlen(szMessage);
 
-	auto msg_obj = AllocateNewMessagePointer(username_size, message_size);
+	auto MsgObj = AllocateNewMessagePointer(UsernameSize, MessageSize);
 
-	AddMessage(szusername, username_size, szmessage, message_size, msg_obj);
+	AddMessage(szUsername, UsernameSize, szMessage, MessageSize, iMessageCount, MsgObj);
 
 	IncreaseMessagesCounter();
 
@@ -87,7 +87,7 @@ std::uint8_t CChatData::GetPointerSize()
 	return sizeof(std::uintptr_t);
 }
 
-pMessage CChatData::AllocateNewMessagePointer(size_t size_username, size_t size_message)
+pMessage CChatData::AllocateNewMessagePointer(size_t SizeUsername, size_t SizeMessage)
 {
 	auto PointerSize = GetPointerSize();
 
@@ -95,11 +95,11 @@ pMessage CChatData::AllocateNewMessagePointer(size_t size_username, size_t size_
 
 	this->m_ppMessagesArray[this->m_mMessagesArraySize] = (pMessage)realloc(nullptr, sizeof(Message));
 
-	this->m_ppMessagesArray[this->m_mMessagesArraySize]->m_szUsername = (char*)realloc(nullptr, size_username + 1);
-	memset(this->m_ppMessagesArray[this->m_mMessagesArraySize]->m_szUsername, 0, size_username + 1);
+	this->m_ppMessagesArray[this->m_mMessagesArraySize]->m_szUsername = (char*)realloc(nullptr, SizeUsername + 1);
+	memset(this->m_ppMessagesArray[this->m_mMessagesArraySize]->m_szUsername, 0, SizeUsername + 1);
 
-	this->m_ppMessagesArray[this->m_mMessagesArraySize]->m_szMessage = (char*)realloc(nullptr, size_message + 1);
-	memset(this->m_ppMessagesArray[this->m_mMessagesArraySize]->m_szMessage, 0, size_message + 1);
+	this->m_ppMessagesArray[this->m_mMessagesArraySize]->m_szMessage = (char*)realloc(nullptr, SizeMessage + 1);
+	memset(this->m_ppMessagesArray[this->m_mMessagesArraySize]->m_szMessage, 0, SizeMessage + 1);
 
 	printf("[+] %s. Allocated memory for message packet. packet va: %p, username va: %p, message va: %p\n", __FUNCTION__,
 		this->m_ppMessagesArray[this->m_mMessagesArraySize],
@@ -109,10 +109,11 @@ pMessage CChatData::AllocateNewMessagePointer(size_t size_username, size_t size_
 	return this->m_ppMessagesArray[this->m_mMessagesArraySize];
 }
 
-void CChatData::AddMessage(char* szusername, size_t username_size, char* szmessage, size_t message_size, pMessage message)
+void CChatData::AddMessage(char* szUsername, size_t UsernameSize, char* szMessage, size_t MessageSize, int iMessageCount, pMessage Message)
 {
-	memcpy(message->m_szUsername, szusername, username_size);
-	memcpy(message->m_szMessage, szmessage, message_size);
+	Message->m_iMessageID = iMessageCount;
+	memcpy(Message->m_szUsername, szUsername, UsernameSize);
+	memcpy(Message->m_szMessage, szMessage, MessageSize);
 }
 
 void CChatData::IncreaseMessagesCounter()

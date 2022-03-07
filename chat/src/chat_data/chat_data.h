@@ -65,8 +65,8 @@ public:
 	CChatData();
 	~CChatData();
 
-	bool SendNewMessage(char* szusername, char* szmessage, size_t username_size = 0, size_t message_size = 0);
-	bool SendNewMessage(char* szdata, int message_start_after, size_t data_size = 0);
+	bool SendNewMessage(char* szUsername, char* szMessage, int iMessageCount = UNTRACKED_MESSAGE, size_t UsernameSize = 0, size_t MessageSize = 0);
+	bool SendNewMessage(char* szData, int iMessageStartAfter, int iMessageCount, size_t DataSize = 0);
 	ppArrayMessages GetChat();
 	size_t GetMessagesArraySize();
 	void CleanupData();
@@ -76,8 +76,8 @@ public:
 	Iterator End();
 private:
 	std::uint8_t GetPointerSize();
-	pMessage AllocateNewMessagePointer(size_t size_username, size_t size_message);
-	void AddMessage(char* szusername, size_t username_size, char* szmessage, size_t message_size, pMessage message);
+	pMessage AllocateNewMessagePointer(size_t SizeUsername, size_t SizeMessage);
+	void AddMessage(char* szUsername, size_t UsernameSize, char* szMessage, size_t MessageSize, int iMessageCount, pMessage Message);
 	void IncreaseMessagesCounter();
 
 	ppArrayMessages m_ppMessagesArray;

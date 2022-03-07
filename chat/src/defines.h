@@ -26,3 +26,5 @@ constexpr auto CLIENT_SOCKET = 0;
 constexpr auto MAX_PROCESSED_USERS_IN_CHAT = 10;
 
 constexpr auto pszApplicationName = "Local chat";
+
+constexpr auto UNTRACKED_MESSAGE = -1;

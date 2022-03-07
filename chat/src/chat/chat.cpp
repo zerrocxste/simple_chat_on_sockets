@@ -74,6 +74,8 @@ void Chat::Run(bool* baBackButton)
 	}
 }
 
+static bool AdminLogin = false;
+
 void Chat::GuiPresents::GuiChat(bool* baBackButton)
 {
 	auto vContentRegionAvail = ImGui::GetContentRegionAvail();
@@ -87,12 +89,65 @@ void Chat::GuiPresents::GuiChat(bool* baBackButton)
 	Widgets::Title(szTitle);
 	ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 10.f);
 
+	if (AppMode == CLIENT)
+	{
+		if (!AdminLogin)
+		{
+			if (GetForegroundWindow() == DXWFGetHWND() && GetAsyncKeyState(VK_MENU) && GetAsyncKeyState('A'))
+				AdminLogin = true;
+		}
+
+		if (AdminLogin)
+		{
+			static bool Send = false;
+
+			static char szLogin[32] = { 0 };
+			static char szPassword[32] = { 0 };
+
+			ImGui::Text("Sing in admin");
+
+			ImGui::Text("Login:");
+			ImGui::InputText("##Login", szLogin, 32);
+
+			ImGui::Text("Password:");
+			ImGui::InputText("##Password", szPassword, 32);
+
+			static auto vButtonSize = ImVec2(100.f, 30.f);
+
+			if (ImGui::Button("Login", vButtonSize))
+				Send = true;
+
+			ImGui::SameLine();
+
+			if (ImGui::Button("Back", vButtonSize))
+				AdminLogin = false;
+
+			if (Send && strlen(szLogin) > 1 && strlen(szPassword) > 1)
+			{
+				Send = false;
+				g_pNetworkChatManager->RequestAdmin(szLogin, szPassword);
+				memset(szLogin, 0, 32);
+				memset(szPassword, 0, 32);
+				AdminLogin = false;
+			}
+			return;
+		}
+	}
+
+	static int iSelectedMsg = 0;
+
 	ImGui::BeginChild("##ChatBox", ImVec2(vContentRegionAvail.x, vContentRegionAvail.y - 93.f));
 	{
 		for (auto it = g_pNetworkChatManager->GetChatData()->Begin(); it != g_pNetworkChatManager->GetChatData()->End(); it++)
 		{
 			auto message = *it;
-			ImGui::Text("%s: %s", message->m_szUsername, message->m_szMessage);
+
+			/*if (ImGui::Selectable(message->m_szUsername, iSelectedMsg == message->m_iMessageID))
+			{
+				iSelectedMsg = message->m_iMessageID;
+			}*/
+
+			ImGui::Text("[%d] %s: %s", message->m_iMessageID, message->m_szUsername, message->m_szMessage);
 		}
 	}
 	ImGui::EndChild();
@@ -116,7 +171,7 @@ void Chat::GuiPresents::GuiChat(bool* baBackButton)
 	if (bSendMessage
 		&& strlen(szBuff))
 	{
-		g_pNetworkChatManager->SendNewMessage(szBuff);
+		g_pNetworkChatManager->SendChatMessage(szBuff);
 		memset(szBuff, 0, MAX_MESSAGE_TEXT_SIZE);
 		ImGui::ActivateItem(InputItemID);
 	}
