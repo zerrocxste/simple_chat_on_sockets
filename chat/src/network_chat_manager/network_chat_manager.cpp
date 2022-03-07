@@ -405,13 +405,6 @@ bool CNetworkChatManager::SendNetMsg(MSG_TYPE MsgType, char* szAuthor, char* szM
 	if (!bSendStatus)
 		return false;
 
-	/*if (MsgType != MSG_TYPE::DELETE_MSG &&
-		MsgType != MSG_TYPE::ADMIN_REQUEST && 
-		IsHost())
-	{
-		this->m_pChatData->SendNewMessage(szAuthor, szMessage, iMessageID);
-	}*/
-
 	return true;
 }
 
