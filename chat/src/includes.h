@@ -23,6 +23,7 @@
 #include <chrono>
 #include <thread>
 #include <mutex>
+#include <string>
 
 #include <dwmapi.h>
 #pragma comment (lib, "dwmapi.lib")

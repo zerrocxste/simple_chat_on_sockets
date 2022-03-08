@@ -58,7 +58,6 @@ T CIterator<T>::operator*()
 {
 	return (T)(*(T*)(this->m_Pointer));
 }
-
 class CChatData
 {
 public:
@@ -70,6 +69,7 @@ public:
 	ppArrayMessages GetChat();
 	size_t GetMessagesArraySize();
 	void CleanupData();
+	void DeleteMessage(int iMessageID);
 
 	using Iterator = CIterator<pMessage>;
 	Iterator Begin();

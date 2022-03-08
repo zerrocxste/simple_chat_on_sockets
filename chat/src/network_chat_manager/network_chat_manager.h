@@ -24,6 +24,8 @@ public:
 	void AddUser(int m_ID, int m_IP, int m_Port);
 	void ResendLastMessagesToClient(int ID, int iNumberToResend);
 	bool RequestAdmin(char* szLogin, char* szPassword);
+	bool DeleteChatMessage(std::vector<int>* MsgsList);
+	bool IsAdmin();
 private:
 	bool m_bIsInitialized;
 	bool m_bIsHost;
@@ -39,12 +41,15 @@ private:
 	int* PacketReadInteger(char* pData, int* pReadCount);
 	char* PacketReadString(char* pData, int iStrLength, int* pReadCount);
 	char* PacketReadNetString(char* pData, int* pReadCount, int* pStrLength = nullptr);
+	void PacketWriteInteger(char* pData, int* pWriteCount, int iValue);
+	void PacketWriteString(char* pData, int* pWriteCount, char* szValue, int iValueLength);
+	void PacketWriteNetString(char* pData, int* pWriteCount, char* szValue, int iValueLength);
+	int CalcNetString(int iValueLength);
 	MSG_TYPE PacketReadMsgType(char* pData, int* pReadCount);
 	bool SendNetMsg(MSG_TYPE MsgType, char* szAuthor, char* szMessage, int iMessageSize, int iMessageID = UNTRACKED_MESSAGE, std::vector<int>* IDList = nullptr);
 	bool SendLocalMsg(char* szAuthor, char* szMessage, int iMessageID);
 	MSG_TYPE GetMsgType(char* szMsg);
 	bool GrantAdmin(char* szLogin, char* szPassword, int iConnectionID);
-	bool DeleteChatMessage(std::vector<int>* MsgsList);	
 	bool SendStatusAdmin(int ID, bool IsGranted);
 };
 

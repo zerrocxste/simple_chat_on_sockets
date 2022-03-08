@@ -116,6 +116,31 @@ void CChatData::AddMessage(char* szUsername, size_t UsernameSize, char* szMessag
 	memcpy(Message->m_szMessage, szMessage, MessageSize);
 }
 
+void CChatData::DeleteMessage(int iMessageID)
+{
+	for (auto i = 0; i < GetMessagesArraySize(); i++)
+	{
+		auto& message = this->m_ppMessagesArray[i];
+
+		if (!message)
+			continue;
+
+		if (message->m_iMessageID == iMessageID)
+		{
+			free(message->m_szUsername);
+			message->m_szUsername = nullptr;
+
+			free(message->m_szMessage);
+			message->m_szMessage = nullptr;
+
+			free(message);
+			message = nullptr;
+
+			break;
+		}
+	}
+}
+
 void CChatData::IncreaseMessagesCounter()
 {
 	this->m_mMessagesArraySize++;
@@ -123,16 +148,21 @@ void CChatData::IncreaseMessagesCounter()
 
 void CChatData::CleanupData()
 {
-	for (auto it = Begin(); it < End(); it++)
+	for (auto i = 0; i < GetMessagesArraySize(); i++)
 	{
-		auto message = *it;
+		auto& message = this->m_ppMessagesArray[i];
 
 		if (!message)
 			continue;
 
 		free(message->m_szUsername);
+		message->m_szUsername = nullptr;
+
 		free(message->m_szMessage);
+		message->m_szMessage = nullptr;
+
 		free(message);
+		message = nullptr;
 	}
 
 	free(this->m_ppMessagesArray);

@@ -65,7 +65,8 @@ void Chat::Run(bool* baBackButton)
 
 		auto NotInitialized = AppMode == PROCESS_INITIALIZING || AppMode == FAILED_INITIALIZING;
 
-		if (NotInitialized) {
+		if (NotInitialized) 
+		{
 			GuiPresents::GuiAwaitInitialize(baBackButton);
 			return;
 		}
@@ -134,46 +135,117 @@ void Chat::GuiPresents::GuiChat(bool* baBackButton)
 		}
 	}
 
-	static int iSelectedMsg = 0;
+	static std::vector<int> vSelectedMessages;
+
+	auto IsDeleteMode = !vSelectedMessages.empty();
 
 	ImGui::BeginChild("##ChatBox", ImVec2(vContentRegionAvail.x, vContentRegionAvail.y - 93.f));
 	{
-		for (auto it = g_pNetworkChatManager->GetChatData()->Begin(); it != g_pNetworkChatManager->GetChatData()->End(); it++)
+		for (auto itMessage = g_pNetworkChatManager->GetChatData()->Begin(); itMessage != g_pNetworkChatManager->GetChatData()->End(); itMessage++)
 		{
-			auto message = *it;
+			auto message = *itMessage;
 
-			/*if (ImGui::Selectable(message->m_szUsername, iSelectedMsg == message->m_iMessageID))
+			if (!message)
+				continue;
+
+			auto ID = message->m_iMessageID;
+			auto IDStr = std::string("##") + std::to_string(ID);
+
+			auto fFindInVec = [](std::vector<int>* vSearchStr, int iSearchElement, std::vector<int>::iterator* it) -> bool {
+
+				auto itSearch = std::find(vSearchStr->begin(), vSearchStr->end(), iSearchElement);
+
+				if (itSearch != vSearchStr->end())
+				{
+					*it = itSearch;
+					return true;
+				}
+
+				return false;
+			};
+
+			std::vector<int>::iterator itSearch;
+
+			auto IsFounded = fFindInVec(&vSelectedMessages, ID, &itSearch);
+
+			if (ImGui::Selectable(IDStr.c_str(), IsFounded))
 			{
-				iSelectedMsg = message->m_iMessageID;
-			}*/
+				if (g_pNetworkChatManager->IsAdmin())
+				{
+					if (ID != UNTRACKED_MESSAGE)
+					{
+						if (IsFounded)
+						{
+							printf("[+] %s() -> Unselected %d message\n", __FUNCTION__, ID);
+							vSelectedMessages.erase(itSearch);
+						}
+						else
+						{
+							printf("[+] %s() -> Selected %d message\n", __FUNCTION__, ID);
+							vSelectedMessages.push_back(ID);
+						}
+					}
+				}
+			}
+
+			ImGui::SameLine();
 
 			ImGui::Text("[%d] %s: %s", message->m_iMessageID, message->m_szUsername, message->m_szMessage);
 		}
 	}
 	ImGui::EndChild();
 
-	bool bSendMessage = false;
-	static char szBuff[MAX_MESSAGE_TEXT_SIZE] = { NULL };
-
-	const static auto vSendButtonSize = ImVec2(50.f, 25.f);
-
-	ImGui::SetNextItemWidth(vContentRegionAvail.x - vSendButtonSize.x - 5.f);
-	if (ImGui::InputText("##Input", szBuff, MAX_MESSAGE_TEXT_SIZE, ImGuiInputTextFlags_::ImGuiInputTextFlags_EnterReturnsTrue))
-		bSendMessage = true;
-
-	auto InputItemID = ImGui::GetItemID();
-
-	ImGui::SameLine();
-
-	if (ImGui::Button("Send", vSendButtonSize))
-		bSendMessage = true;
-
-	if (bSendMessage
-		&& strlen(szBuff))
+	if (!IsDeleteMode)
 	{
-		g_pNetworkChatManager->SendChatMessage(szBuff);
-		memset(szBuff, 0, MAX_MESSAGE_TEXT_SIZE);
-		ImGui::ActivateItem(InputItemID);
+		bool bSendMessage = false;
+		static char szBuff[MAX_MESSAGE_TEXT_SIZE] = { NULL };
+
+		const static auto vSendButtonSize = ImVec2(50.f, 25.f);
+
+		ImGui::SetNextItemWidth(vContentRegionAvail.x - vSendButtonSize.x - 5.f);
+		if (ImGui::InputText("##Input", szBuff, MAX_MESSAGE_TEXT_SIZE, ImGuiInputTextFlags_::ImGuiInputTextFlags_EnterReturnsTrue))
+			bSendMessage = true;
+
+		auto InputItemID = ImGui::GetItemID();
+
+		ImGui::SameLine();
+
+		if (ImGui::Button("Send", vSendButtonSize))
+			bSendMessage = true;
+
+		if (bSendMessage
+			&& strlen(szBuff))
+		{
+			g_pNetworkChatManager->SendChatMessage(szBuff);
+			memset(szBuff, 0, MAX_MESSAGE_TEXT_SIZE);
+			ImGui::ActivateItem(InputItemID);
+		}
+	}
+	else
+	{
+		bool bCancelDeleteMessages = false;
+		bool bDeleteMessages = false;
+
+		auto vSendButtonSize = ImVec2(ImGui::GetContentRegionAvailWidth() * 0.5f - ImGui::GetStyle().ItemInnerSpacing.x, 25.f);
+
+		if (ImGui::Button("Cancel", vSendButtonSize))
+			bCancelDeleteMessages = true;
+
+		ImGui::SameLine();
+
+		if (ImGui::Button("Delete", vSendButtonSize))
+			bDeleteMessages = true;
+
+		if (bCancelDeleteMessages)
+		{
+			vSelectedMessages.clear();
+		}
+
+		if (bDeleteMessages)
+		{
+			g_pNetworkChatManager->DeleteChatMessage(&vSelectedMessages);
+			vSelectedMessages.clear();
+		}
 	}
 }
 
