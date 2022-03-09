@@ -221,7 +221,7 @@ bool CNetwork::InitializeAsHost()
 
 			printf("[+] %s -> Await new connection: %s:%d\n", "CNetwork::ConnectionHandler", szIP, iPort);
 
-			if (!_this->InvokeNewClientNotification(true, _this->m_iConnectionCount, iIP, szIP, iPort))
+			if (!_this->InvokeClientConnectionNotification(true, _this->m_iConnectionCount, iIP, szIP, iPort))
 			{
 				printf("[+] %s -> Aborted connection by host user clientid: %d\n", "CNetwork::ConnectionHandler", (int)_this->m_ClientsList.size());
 				_this->DisconnectSocket(Connection);
@@ -264,6 +264,7 @@ bool CNetwork::InitializeAsHost()
 					else
 					{
 						printf("[+] %s -> Dropped connection at clientid: %d\n", "CNetwork::DataReceiver", ConnectionID);
+						_this->InvokeClientDisconnectionNotification(ConnectionID);
 						_this->DisconnectClient(Client);
 						break;
 					}
@@ -283,7 +284,7 @@ bool CNetwork::InitializeAsHost()
 			Client.m_iThreadId = _this->m_iConnectionCount;
 			Client.m_SockAddrIn = SockAddrIn;
 
-			_this->InvokeNewClientNotification(false, _this->m_iConnectionCount, iIP, szIP, iPort);
+			_this->InvokeClientConnectionNotification(false, _this->m_iConnectionCount, iIP, szIP, iPort);
 
 			_this->m_iConnectionCount++;
 		}
@@ -349,22 +350,40 @@ bool CNetwork::InitializeAsClient()
 	return true;
 }
 
-bool CNetwork::AddClientsNotificationCallback(f_NewClientsNotification pf_NewClientsNotification)
+bool CNetwork::AddClientsConnectionNotificationCallback(f_ClientConnectionNotification pf_NewClientsNotificationCallback)
 {
 	if (!IsHost())
 		return false;
 
-	this->m_pf_NewClientsNotificationCallback = pf_NewClientsNotification;
+	this->m_pf_ClientConnectionNotificationCallback = pf_NewClientsNotificationCallback;
 
-	return false;
+	return true;
 }
 
-bool CNetwork::InvokeNewClientNotification(bool bIsPreConnectionStep, int iConnectionCount, int iIP, char* szIP, int iPort)
+bool CNetwork::AddClientsDisconnectionNotificationCallback(f_ClientDisconnectionNotification pf_ClientDisconnectionNotification)
 {
-	if (!this->m_pf_NewClientsNotificationCallback)
+	if (!IsHost())
+		return false;
+
+	this->m_pf_ClientDisconnectionNotificationCallback = pf_ClientDisconnectionNotification;
+
+	return true;
+}
+
+bool CNetwork::InvokeClientConnectionNotification(bool bIsPreConnectionStep, int iConnectionCount, int iIP, char* szIP, int iPort)
+{
+	if (!this->m_pf_ClientConnectionNotificationCallback)
 		return true;
 
-	return m_pf_NewClientsNotificationCallback(bIsPreConnectionStep, iConnectionCount, iIP, szIP, iPort);
+	return m_pf_ClientConnectionNotificationCallback(bIsPreConnectionStep, iConnectionCount, iIP, szIP, iPort);
+}
+
+bool CNetwork::InvokeClientDisconnectionNotification(int iConnectionCount)
+{
+	if (!this->m_pf_ClientDisconnectionNotificationCallback)
+		return true;
+
+	return m_pf_ClientDisconnectionNotificationCallback(iConnectionCount);
 }
 
 bool CNetwork::GetReceivedData(net_packet* pPacket)

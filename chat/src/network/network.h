@@ -1,4 +1,5 @@
-using f_NewClientsNotification = bool(*)(bool bIsPreConnectionStep, int iConnectionCount, int iIp, char* szIP, int iPort);
+using f_ClientConnectionNotification = bool(*)(bool bIsPreConnectionStep, int iConnectionCount, int iIp, char* szIP, int iPort);
+using f_ClientDisconnectionNotification = bool(*)(int iConnectionCount);
 
 struct client_receive_data_thread
 {
@@ -26,11 +27,13 @@ private:
 	std::vector<net_packet*> m_PacketsList;
 	HANDLE m_hThreadConnectionsHost;
 	bool m_bServerWasDowned;
-	f_NewClientsNotification m_pf_NewClientsNotificationCallback;
+	f_ClientConnectionNotification m_pf_ClientConnectionNotificationCallback;
+	f_ClientDisconnectionNotification m_pf_ClientDisconnectionNotificationCallback;
 
 	bool InitializeAsHost();
 	bool InitializeAsClient();
-	bool InvokeNewClientNotification(bool bIsPreConnectionStep, int iConnectionCount, int iIP, char* szIP, int iPort);
+	bool InvokeClientConnectionNotification(bool bIsPreConnectionStep, int iConnectionCount, int iIP, char* szIP, int iPort);
+	bool InvokeClientDisconnectionNotification(int iConnectionCount);
 	bool SendToSocket(SOCKET Socket, void* pPacket, int iSize);
 	bool ReceivePacket(net_packet* pPacket);
 	void DropConnections();
@@ -53,7 +56,8 @@ public:
 	char* GetStrIpFromSockAddrIn(PSOCKADDR_IN pSockAddrIn);
 	int GetIntegerIpFromSockAddrIn(PSOCKADDR_IN pSockAddrIn);
 	int GetPortFromSockAddrIn(PSOCKADDR_IN pSockAddrIn);
-	bool AddClientsNotificationCallback(f_NewClientsNotification pf_NewClientsNotification);
+	bool AddClientsConnectionNotificationCallback(f_ClientConnectionNotification pf_NewClientsNotificationCallback);
+	bool AddClientsDisconnectionNotificationCallback(f_ClientDisconnectionNotification pf_ClientDisconnectionNotification);
 
 	static bool StrIpToInteger(char* szIP, int* pIP);
 	static bool IntegerIpToStr(int iIP, char* szIP);

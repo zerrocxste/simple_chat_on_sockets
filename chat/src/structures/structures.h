@@ -40,8 +40,9 @@ struct network_thread_arg
 
 struct chat_user
 {
-	bool m_bIsInitialized;
+	bool m_bConnected;
 	int m_IP;
 	int m_iPort;
 	bool m_bIsAdmin;
+	char m_szUsername[MAX_USERNAME_SIZE];
 };

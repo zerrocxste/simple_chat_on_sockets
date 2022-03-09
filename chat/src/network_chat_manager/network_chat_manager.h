@@ -1,10 +1,12 @@
 enum MSG_TYPE
 {
-	NONE_MSG,
-	CHAT_MSG,
-	ADMIN_REQUEST,
-	ADMIN_STATUS,
-	DELETE_MSG
+	MSG_NONE,
+	MSG_SEND_CHAT_TO_HOST,
+	MSG_SEND_CHAT_TO_CLIENT,
+	MSG_ADMIN_REQUEST,
+	MSG_ADMIN_STATUS,
+	MSG_CONNECTED,
+	MSG_DELETE
 };
 
 class CNetworkChatManager
@@ -23,7 +25,9 @@ public:
 	bool IsHost();
 	void AddUser(int m_ID, int m_IP, int m_Port);
 	void ResendLastMessagesToClient(int ID, int iNumberToResend);
+	bool DisconnectUser(int ID);
 	bool RequestAdmin(char* szLogin, char* szPassword);
+	bool SendConnectedMessage(int ID = 0);
 	bool DeleteChatMessage(std::vector<int>* MsgsList);
 	bool IsAdmin();
 private:
@@ -36,6 +40,7 @@ private:
 	CNetwork* m_pNetwork;
 	CChatData* m_pChatData;
 	char m_szUsername[32];
+	int m_iUsernameLength;
 	std::map<int, chat_user> m_vUsersList;
 
 	int* PacketReadInteger(char* pData, int* pReadCount);
@@ -43,13 +48,19 @@ private:
 	char* PacketReadNetString(char* pData, int* pReadCount, int* pStrLength = nullptr);
 	void PacketWriteInteger(char* pData, int* pWriteCount, int iValue);
 	void PacketWriteString(char* pData, int* pWriteCount, char* szValue, int iValueLength);
+	void PacketWriteData(char* pData, int* pWriteCount, char* szValue, int iValueLength);
 	void PacketWriteNetString(char* pData, int* pWriteCount, char* szValue, int iValueLength);
+	bool IsValidStrMessage(char* szString, int iStringLength);
+	bool SendChatToHost(char* szMessage);
+	bool SendChatToClient(char* szUsername, char* szMessage, int iMessageID = UNTRACKED_MESSAGE, std::vector<int>* IDList = nullptr);
+	int CalcNetData(int iValueLength);
 	int CalcNetString(int iValueLength);
 	MSG_TYPE PacketReadMsgType(char* pData, int* pReadCount);
-	bool SendNetMsg(MSG_TYPE MsgType, char* szAuthor, char* szMessage, int iMessageSize, int iMessageID = UNTRACKED_MESSAGE, std::vector<int>* IDList = nullptr);
+	bool SendNetMsg(MSG_TYPE MsgType, char* szAuthor, int iMessageSize, std::vector<int>* IDList = nullptr);
 	bool SendLocalMsg(char* szAuthor, char* szMessage, int iMessageID);
 	MSG_TYPE GetMsgType(char* szMsg);
 	bool GrantAdmin(char* szLogin, char* szPassword, int iConnectionID);
 	bool SendStatusAdmin(int ID, bool IsGranted);
+	chat_user* GetUser(int ID);
 };
 
