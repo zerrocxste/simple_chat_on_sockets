@@ -11,7 +11,7 @@ CNetwork::CNetwork(bool IsHost, char* pszIP, int iPort, int iMaxProcessedUsersNu
 	m_iConnectionCount(0),
 	m_hThreadConnectionsHost(0)
 {
-	printf("[+] %s -> Contructor called\n", __FUNCTION__);
+	LOGGER("Contructor called\n");
 
 	memset(&this->m_WSAdata, 0, sizeof(WSADATA));
 	memset(&this->m_SockAddrIn, 0, sizeof(SOCKADDR_IN));
@@ -19,7 +19,7 @@ CNetwork::CNetwork(bool IsHost, char* pszIP, int iPort, int iMaxProcessedUsersNu
 
 CNetwork::~CNetwork()
 {
-	printf("[+] %s -> Destructor called\n", __FUNCTION__);
+	LOGGER("Destructor called\n");
 
 	closesocket(this->m_Socket);
 	DropConnections();
@@ -207,11 +207,11 @@ bool CNetwork::InitializeAsHost()
 					LastError == WSAEOPNOTSUPP ||
 					LastError == WSAECONNRESET)
 				{
-					printf("[-] %s -> Failed to client connection at: %d, Error code: %d\n", "CNetwork::ConnectionHandler", (int)_this->m_ClientsList.size(), LastError);
+					LOGGER("Failed to client connection at: %d, Error code: %d\n", (int)_this->m_ClientsList.size(), LastError);
 					continue;
 				}
 
-				printf("[+] %s -> Shutdown client connection handler thread WSAErrorcode: %d\n", "CNetwork::ConnectionHandler", LastError);
+				LOGGER("Shutdown client connection handler thread WSAErrorcode: %d\n", LastError);
 				break;
 			}
 
@@ -219,16 +219,16 @@ bool CNetwork::InitializeAsHost()
 			auto szIP = _this->GetStrIpFromSockAddrIn(&SockAddrIn);
 			auto iPort = _this->GetPortFromSockAddrIn(&SockAddrIn);
 
-			printf("[+] %s -> Await new connection: %s:%d\n", "CNetwork::ConnectionHandler", szIP, iPort);
+			LOGGER("Await new connection: %s:%d", szIP, iPort);
 
 			if (!_this->InvokeClientConnectionNotification(true, _this->m_iConnectionCount, iIP, szIP, iPort))
 			{
-				printf("[+] %s -> Aborted connection by host user clientid: %d\n", "CNetwork::ConnectionHandler", (int)_this->m_ClientsList.size());
+				LOGGER("Aborted connection by host user clientid: %d\n", (int)_this->m_ClientsList.size());
 				_this->DisconnectSocket(Connection);
 				continue;
 			}
 
-			printf("[+] %s -> Connected clientid: %d\n", "CNetwork::ConnectionHandler", (int)_this->m_ClientsList.size());
+			LOGGER("Connected clientid: %d\n", (int)_this->m_ClientsList.size());
 
 			struct host_receive_thread_arg
 			{
@@ -254,7 +254,7 @@ bool CNetwork::InitializeAsHost()
 					{
 						if (DataSize)
 						{
-							printf("[+] %s -> Received data at clientid: %d, data size: %d\n", "CNetwork::DataReceiver", ConnectionID, DataSize);
+							LOGGER("Received data at clientid: %d, data size: %d\n", ConnectionID, DataSize);
 							auto pData = new char[DataSize];
 							recv(Client->m_ConnectionSocket, (char*)pData, DataSize, NULL);
 							net_packet* NetPacket = new net_packet(pData, DataSize, ConnectionID);
@@ -263,14 +263,14 @@ bool CNetwork::InitializeAsHost()
 					}
 					else
 					{
-						printf("[+] %s -> Dropped connection at clientid: %d\n", "CNetwork::DataReceiver", ConnectionID);
+						LOGGER("Dropped connection at clientid: %d\n", ConnectionID);
 						_this->InvokeClientDisconnectionNotification(ConnectionID);
 						_this->DisconnectClient(Client);
 						break;
 					}
 				}
 
-				printf("[+] %s -> Exit receive thread clientid: %d\n", "CNetwork::DataReceiver", ConnectionID);
+				LOGGER("Exit receive thread clientid: %d\n", ConnectionID);
 
 				return 0;
 			};
@@ -324,7 +324,7 @@ bool CNetwork::InitializeAsClient()
 			{
 				if (DataSize)
 				{
-					printf("[+] %s -> Received data from host, size: %d\n", "CNetwork::DataReceiver", DataSize);
+					LOGGER("Received data from host, size: %d\n", DataSize);
 					auto pData = new char[DataSize];
 					recv(Client->m_ConnectionSocket, (char*)pData, DataSize, NULL);
 					net_packet* NetPacket = new net_packet(pData, DataSize, 0);
@@ -333,7 +333,7 @@ bool CNetwork::InitializeAsClient()
 			}
 			else
 			{
-				printf("[+] %s -> Host was closed\n", "CNetwork::DataReceiver");
+				LOGGER("Host was closed\n");
 				_this->m_bServerWasDowned = true;
 				break;
 			}

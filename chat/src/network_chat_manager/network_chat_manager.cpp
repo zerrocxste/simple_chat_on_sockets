@@ -140,7 +140,7 @@ void CNetworkChatManager::ReceivePacketsRoutine()
 
 		LOGGER("To host msg. ID: %d, Username: '%s', Message: '%s'\n", ConnectionID, User->m_szUsername, szMessage);
 
-		auto IsSended = SendNewChatMessageToClient(this->m_szUsername, szMessage);
+		auto IsSended = SendNewChatMessageToClient(User->m_szUsername, szMessage);
 
 		if (IsSended)
 		{
@@ -393,7 +393,7 @@ bool CNetworkChatManager::SendChatMessageToClient(char* szUsername, char* szMess
 bool CNetworkChatManager::SendNewChatMessageToClient(char* szUsername, char* szMessage, std::vector<int>* IDList)
 {
 	this->m_iMessageCount++;
-	return SendChatMessageToClient(this->m_szUsername, szMessage, this->m_iMessageCount);
+	return SendChatMessageToClient(szUsername, szMessage, this->m_iMessageCount);
 }
 
 bool CNetworkChatManager::SendChatMessage(char* szMessage)
@@ -676,8 +676,13 @@ void CNetworkChatManager::ResendLastMessagesToClient(int ID, int iNumberToResend
 
 	std::vector<int> IDList{ ID };
 
+	auto iBeginFrom = (std::int64_t)GetChatData()->GetMessagesArraySize() - iNumberToResend;
+
+	if (iBeginFrom < 0)
+		iBeginFrom = 0;
+
 	int i = 0;
-	for (auto it = GetChatData()->Begin(); it != GetChatData()->End() && i < iNumberToResend; it++, i++)
+	for (auto it = GetChatData()->At(iBeginFrom); it != GetChatData()->End() && i < iNumberToResend; it++, i++)
 	{
 		auto message = *it;
 

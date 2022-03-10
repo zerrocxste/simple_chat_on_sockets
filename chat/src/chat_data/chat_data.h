@@ -10,6 +10,8 @@ public:
 	bool operator>(CIterator o);
 	bool operator!=(CIterator o);
 	T operator*();
+	T operator+(int o);
+	T operator-(int o);
 private:
 	T m_Pointer;
 };
@@ -58,6 +60,7 @@ T CIterator<T>::operator*()
 {
 	return (T)(*(T*)(this->m_Pointer));
 }
+
 class CChatData
 {
 public:
@@ -74,6 +77,7 @@ public:
 	using Iterator = CIterator<pMessage>;
 	Iterator Begin();
 	Iterator End();
+	Iterator At(int c);
 private:
 	std::uint8_t GetPointerSize();
 	pMessage AllocateNewMessagePointer(size_t SizeUsername, size_t SizeMessage);

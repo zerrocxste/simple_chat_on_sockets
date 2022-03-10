@@ -139,6 +139,7 @@ void Chat::GuiPresents::GuiChat(bool* baBackButton)
 
 	auto IsDeleteMode = !vSelectedMessages.empty();
 
+	//ImGui::PushStyleVar(ImGuiStyleVar_::ImGuiStyleVar_WindowPadding, ImVec2(12.f, 12.f));
 	ImGui::BeginChild("##ChatBox", ImVec2(vContentRegionAvail.x, vContentRegionAvail.y - 93.f));
 	{
 		for (auto itMessage = g_pNetworkChatManager->GetChatData()->Begin(); itMessage != g_pNetworkChatManager->GetChatData()->End(); itMessage++)
@@ -176,12 +177,12 @@ void Chat::GuiPresents::GuiChat(bool* baBackButton)
 					{
 						if (IsFounded)
 						{
-							printf("[+] %s() -> Unselected %d message\n", __FUNCTION__, ID);
+							LOGGER("Unselected %d message\n", ID);
 							vSelectedMessages.erase(itSearch);
 						}
 						else
 						{
-							printf("[+] %s() -> Selected %d message\n", __FUNCTION__, ID);
+							LOGGER("Selected %d message\n", ID);
 							vSelectedMessages.push_back(ID);
 						}
 					}
@@ -190,10 +191,14 @@ void Chat::GuiPresents::GuiChat(bool* baBackButton)
 
 			ImGui::SameLine();
 
+			//auto CursorPos = ImGui::GetCursorPos();
+			//ImGui::SetCursorPos(ImVec2(CursorPos.x + 5.f, CursorPos.y + 5.f));
+
 			ImGui::Text("[%d] %s: %s", message->m_iMessageID, message->m_szUsername, message->m_szMessage);
 		}
 	}
 	ImGui::EndChild();
+	//ImGui::PopStyleVar();
 
 	if (!IsDeleteMode)
 	{
