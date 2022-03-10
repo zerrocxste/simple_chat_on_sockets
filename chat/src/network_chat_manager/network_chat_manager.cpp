@@ -39,7 +39,7 @@ CNetworkChatManager::CNetworkChatManager(bool IsHost, char* szUsername, char* ps
 	m_iMaxProcessedUsersNumber(iMaxProcessedUsersNumber),
 	m_iMessageCount(0)
 {
-	printf("[+] %s -> Constructor called\n", __FUNCTION__);
+	LOGGER("Constructor called\n");
 
 	this->m_iUsernameLength = strlen(szUsername);
 	memcpy(this->m_szUsername, szUsername, this->m_iUsernameLength + NULL_TERMINATE_BYTE_SIZE);
@@ -50,7 +50,7 @@ CNetworkChatManager::CNetworkChatManager(bool IsHost, char* szUsername, char* ps
 
 CNetworkChatManager::~CNetworkChatManager()
 {
-	printf("[+] %s -> Destructor called\n", __FUNCTION__);
+	LOGGER("Destructor called\n");
 
 	delete this->m_pNetwork;
 	delete this->m_pChatData;
@@ -61,7 +61,7 @@ bool CNetworkChatManager::Initialize()
 	if (this->m_bIsInitialized)
 		return true;
 
-	this->m_bIsInitialized = this->m_pNetwork->Startup();
+	this->m_bIsInitialized = GetNetwork()->Startup();
 
 	if (!this->m_bIsInitialized)
 	{
@@ -69,8 +69,8 @@ bool CNetworkChatManager::Initialize()
 		return false;
 	}
 
-	this->m_pNetwork->AddClientsConnectionNotificationCallback(OnConnectionNotification);
-	this->m_pNetwork->AddClientsDisconnectionNotificationCallback(OnDisconnectionNotification);
+	GetNetwork()->AddClientsConnectionNotificationCallback(OnConnectionNotification);
+	GetNetwork()->AddClientsDisconnectionNotificationCallback(OnDisconnectionNotification);
 
 	if (IsHost())
 	{
@@ -91,12 +91,12 @@ void CNetworkChatManager::Shutdown()
 
 void CNetworkChatManager::ReceivePacketsRoutine()
 {
-	if (this->m_pNetwork->ServerWasDowned())
+	if (GetNetwork()->ServerWasDowned())
 		Shutdown();
 
 	net_packet Packet;
 
-	auto HasData = this->m_pNetwork->GetReceivedData(&Packet);
+	auto HasData = GetNetwork()->GetReceivedData(&Packet);
 
 	if (!HasData)
 		return;
@@ -108,13 +108,13 @@ void CNetworkChatManager::ReceivePacketsRoutine()
 	if (!DataSize)
 		return;
 
-	printf("[+] %s -> Packet.m_iConnectionID: %d, Packet.m_pPacket: %p, Packet.m_iSize: %d\n", __FUNCTION__, ConnectionID, pData, DataSize);
+	LOGGER("Packet.m_iConnectionID: %d, Packet.m_pPacket: %p, Packet.m_iSize: %d\n", ConnectionID, pData, DataSize);
 
 	int iReadCount = 0;
 
 	auto Msg = PacketReadMsgType(pData, &iReadCount);
 
-	auto iMessageLength = *PacketReadInteger(pData, &iReadCount);
+	auto iMsgLength = PacketReadInteger(pData, &iReadCount);
 
 	auto User = GetUser(ConnectionID);
 
@@ -122,28 +122,56 @@ void CNetworkChatManager::ReceivePacketsRoutine()
 	{
 		if (!User->m_bConnected)
 		{
-			printf("[+] %s() -> Client not connected. ID: %d\n", __FUNCTION__, ConnectionID);
+			LOGGER("Client not connected. ID: %d\n", ConnectionID);
 			return;
 		}
 	}
 
 	if (Msg == MSG_SEND_CHAT_TO_HOST)
 	{
-		auto szMessage = PacketReadNetString(pData, &iReadCount);
-		auto iMessageCount = *PacketReadInteger(pData, &iReadCount);
+		auto iMessageLength = 0;
+		auto szMessage = PacketReadNetString(pData, &iReadCount, &iMessageLength);
 
-		this->m_iMessageCount++;
+		if (!IsValidStrMessage(szMessage, iMessageLength))
+		{
+			LOGGER("Invalid string. ID: %d, Message length: %d", ConnectionID, iMessageLength);
+			return;
+		}
 
-		if (SendChatToClient(User->m_szUsername, szMessage, this->m_iMessageCount))
-			this->m_pChatData->SendNewMessage(User->m_szUsername, szMessage, this->m_iMessageCount);
+		LOGGER("To host msg. ID: %d, Username: '%s', Message: '%s'\n", ConnectionID, User->m_szUsername, szMessage);
+
+		auto IsSended = SendNewChatMessageToClient(this->m_szUsername, szMessage);
+
+		if (IsSended)
+		{
+			GetChatData()->SendNewMessage(User->m_szUsername, szMessage, this->m_iMessageCount);
+		}
 	}
 	else if (Msg == MSG_SEND_CHAT_TO_CLIENT)
 	{
-		auto szUsername = PacketReadNetString(pData, &iReadCount);
-		auto szMessage = PacketReadNetString(pData, &iReadCount);
-		auto iMessageCount = *PacketReadInteger(pData, &iReadCount);
+		auto iUsernameLength = 0;
+		auto szUsername = PacketReadNetString(pData, &iReadCount, &iUsernameLength);
 
-		this->m_pChatData->SendNewMessage(szUsername, szMessage, iMessageCount);
+		if (!IsValidStrMessage(szUsername, iUsernameLength))
+		{
+			LOGGER("Invalid string. ID: %d, Username length: %d\n", ConnectionID, iUsernameLength);
+			return;
+		}
+
+		auto iMessageLength = 0;
+		auto szMessage = PacketReadNetString(pData, &iReadCount, &iMessageLength);
+
+		if (!IsValidStrMessage(szMessage, iMessageLength))
+		{
+			LOGGER("Invalid string. ID: %d, Message length: %d\n", ConnectionID, iMessageLength);
+			return;
+		}
+
+		auto iMessageCount = PacketReadInteger(pData, &iReadCount);
+
+		LOGGER("To client msg. Username: '%s' Message: '%s'\n", szUsername, szMessage);
+
+		GetChatData()->SendNewMessage(szUsername, szMessage, iMessageCount);
 	}
 	else if (Msg == MSG_ADMIN_REQUEST)
 	{
@@ -153,17 +181,17 @@ void CNetworkChatManager::ReceivePacketsRoutine()
 		auto szLogin = PacketReadNetString(pData, &iReadCount);
 		auto szPassword = PacketReadNetString(pData, &iReadCount);
 
-		printf("[+] %s() -> Admin access. Login: '%s' Password: '%s'\n", __FUNCTION__, szLogin, szPassword);
+		LOGGER("Admin access request from ID: %d, Login: '%s', Password: '%s'\n", ConnectionID, szLogin, szPassword);
 
 		auto IsGranted = GrantAdmin(szLogin, szPassword, ConnectionID);
 
 		if (IsGranted)
 		{
-			printf("[+] %s() -> '%s', id: %d Admin access granted!\n", __FUNCTION__, User->m_szUsername, ConnectionID);
+			LOGGER("Admin access granted!\n");
 		}
 		else
 		{
-			printf("[+] %s() -> '%s', id: %d Admin not granted!\n", __FUNCTION__, User->m_szUsername, ConnectionID);
+			LOGGER("Admin not granted!\n");
 		}
 
 		SendStatusAdmin(ConnectionID, IsGranted);
@@ -179,33 +207,32 @@ void CNetworkChatManager::ReceivePacketsRoutine()
 
 		if (!strcmp(szMessage, ADMIN_GRANTED))
 		{
-			printf("[+] %s() -> Server allowed admin\n", __FUNCTION__);
+			LOGGER("Server allowed admin\n");
 			this->m_bIsAdmin = true; 
 		}
 		else 
-			printf("[+] %s() -> Server disallowed admin\n", __FUNCTION__);
+			LOGGER("Server disallowed admin\n");
 
-		this->m_pChatData->SendNewMessage((char*)"SYSTEM", szMessage);
+		GetChatData()->SendNewMessage((char*)"SYSTEM", szMessage);
 	}
 	else if (Msg == MSG_CONNECTED)
 	{
-		auto iUsernameLength = *PacketReadInteger(pData, &iReadCount);
+		auto iUsernameLength = 0;
+		auto szUsername = PacketReadNetString(pData, &iReadCount, &iUsernameLength);
 
 		if (iUsernameLength > 32)
 		{
-			printf("[+] %s() -> Username too long. ID: %d, Username length: %d\n", __FUNCTION__, ConnectionID, iUsernameLength);
+			LOGGER("Username too long. ID: %d, Username length: %d\n", ConnectionID, iUsernameLength);
 			return;
 		}
-
-		auto szUsername = PacketReadString(pData, iUsernameLength, &iReadCount);
 
 		if (!IsValidStrMessage(szUsername, iUsernameLength))
 		{
-			printf("[+] %s() -> Invalid string. ID: %d, Username length: %d\n", __FUNCTION__, ConnectionID, iUsernameLength);
+			LOGGER("Invalid string. ID: %d, Username length: %d\n", ConnectionID, iUsernameLength);
 			return;
 		}
 
-		printf("[+] %s() -> Chat client connected. ID: %d, Username: %s\n", __FUNCTION__, ConnectionID, szUsername);
+		LOGGER("Chat client connected. ID: %d, Username: %s\n", ConnectionID, szUsername);
 
 		memcpy(User->m_szUsername, szUsername, iUsernameLength + NULL_TERMINATE_BYTE_SIZE);
 	}
@@ -213,37 +240,37 @@ void CNetworkChatManager::ReceivePacketsRoutine()
 	{
 		if (IsHost() && !User->m_bIsAdmin)
 		{
-			printf("[+] %s() -> User %d not admin\n", __FUNCTION__, ConnectionID);
+			LOGGER("User %d not admin\n", ConnectionID);
 			return;
 		}
 
-		auto iArraySize = *PacketReadInteger(pData, &iReadCount);
+		auto iArraySize = PacketReadInteger(pData, &iReadCount);
 
-		printf("[+] %s() -> Messages for delete array size: %d Numbers: \n", __FUNCTION__, iArraySize);
+		LOGGER("Messages for delete array size: %d Numbers: \n", iArraySize);
 
 		for (auto i = 0; i < iArraySize; i++)
 		{
-			auto iMessageID = *PacketReadInteger(pData, &iReadCount);
-			printf("%d ", iMessageID);
-			this->m_pChatData->DeleteMessage(iMessageID);
+			auto iMessageID = PacketReadInteger(pData, &iReadCount);
+			LOGGER("%d", iMessageID);
+			GetChatData()->DeleteMessage(iMessageID);
 		}
 
-		printf("\n");
+		LOGGER("\n");
 
 		std::vector<int> vExcludeID{ ConnectionID };
-		this->m_pNetwork->SendPacketExcludeID(Packet.m_pPacket, DataSize, &vExcludeID);
+		GetNetwork()->SendPacketExcludeID(Packet.m_pPacket, DataSize, &vExcludeID);
 	}
 	else 
 	{
-		printf("[+] %s() -> Not valid msg\n", __FUNCTION__);
+		LOGGER("Not valid msg\n");
 	}
 }
 
-int* CNetworkChatManager::PacketReadInteger(char* pData, int* pReadCount)
+int CNetworkChatManager::PacketReadInteger(char* pData, int* pReadCount)
 {
 	auto ret = pData + *pReadCount;
 	*pReadCount += sizeof(int);
-	return (int*)ret;
+	return *(int*)ret;
 }
 
 char* CNetworkChatManager::PacketReadString(char* pData, int iStrLength, int* pReadCount)
@@ -257,7 +284,7 @@ char* CNetworkChatManager::PacketReadNetString(char* pData, int* pReadCount, int
 {
 	int iStrLength = 0;
 
-	iStrLength = *PacketReadInteger(pData, pReadCount);
+	iStrLength = PacketReadInteger(pData, pReadCount);
 
 	if (pStrLength != nullptr)
 		*pStrLength = iStrLength;
@@ -314,22 +341,20 @@ bool CNetworkChatManager::IsValidStrMessage(char* szString, int iStringLength)
 	return *(szString) != NULL_TERMINATE_BYTE && *(szString + iStringLength) == NULL_TERMINATE_BYTE;
 }
 
-bool CNetworkChatManager::SendChatToHost(char* szMessage)
+bool CNetworkChatManager::SendChatMessageToHost(char* szMessage)
 {
 	auto iMessageLength = strlen(szMessage);
 
 	if (!iMessageLength)
 		return false;
 
-	int MsgSize = CalcNetString(iMessageLength) + sizeof(int);
+	int MsgSize = CalcNetString(iMessageLength);
 
 	char* buff = new char[MsgSize]();
 
 	int iWriteCount = 0;
 
 	PacketWriteNetString(buff, &iWriteCount, szMessage, iMessageLength);
-
-	PacketWriteInteger(buff, &iWriteCount, this->m_iMessageCount);
 
 	auto ret = SendNetMsg(MSG_TYPE::MSG_SEND_CHAT_TO_HOST, buff, MsgSize);
 
@@ -338,7 +363,7 @@ bool CNetworkChatManager::SendChatToHost(char* szMessage)
 	return ret;
 }
 
-bool CNetworkChatManager::SendChatToClient(char* szUsername, char* szMessage, int iMessageID, std::vector<int>* IDList)
+bool CNetworkChatManager::SendChatMessageToClient(char* szUsername, char* szMessage, int iMessageID, std::vector<int>* IDList)
 {
 	auto iUsernameLength = strlen(szUsername);
 	auto iMessageLength = strlen(szMessage);
@@ -365,22 +390,28 @@ bool CNetworkChatManager::SendChatToClient(char* szUsername, char* szMessage, in
 	return ret;
 }
 
+bool CNetworkChatManager::SendNewChatMessageToClient(char* szUsername, char* szMessage, std::vector<int>* IDList)
+{
+	this->m_iMessageCount++;
+	return SendChatMessageToClient(this->m_szUsername, szMessage, this->m_iMessageCount);
+}
+
 bool CNetworkChatManager::SendChatMessage(char* szMessage)
 {
 	auto ret = false;
 
 	if (IsHost())
 	{
-		this->m_iMessageCount++;
-
-		ret = SendChatToClient(this->m_szUsername, szMessage);
+		ret = SendNewChatMessageToClient(this->m_szUsername, szMessage);
 
 		if (ret)
-			this->m_pChatData->SendNewMessage(this->m_szUsername, szMessage, this->m_iMessageCount);
+		{
+			GetChatData()->SendNewMessage(this->m_szUsername, szMessage, this->m_iMessageCount);
+		}
 	}
 	else
 	{
-		ret = SendChatToHost(szMessage);
+		ret = SendChatMessageToHost(szMessage);
 	}
 
 	return ret;
@@ -488,7 +519,7 @@ bool CNetworkChatManager::DeleteChatMessage(std::vector<int>* MsgsList)
 	if (ret)
 	{
 		for (auto& i : *MsgsList)
-			this->m_pChatData->DeleteMessage(i);
+			GetChatData()->DeleteMessage(i);
 	}
 
 	return ret;
@@ -546,13 +577,13 @@ bool CNetworkChatManager::SendNetMsg(MSG_TYPE MsgType, char* szMessage, int iMes
 	PacketWriteInteger(pPacket, &iWriteStep, iMessageSize);
 	PacketWriteData(pPacket, &iWriteStep, szMessage, iMessageSize);
 
-	printf("[+] %s() -> iPacketSize: %d, iWriteStep: %d\n", __FUNCTION__, iPacketSize, iWriteStep);
+	LOGGER("iPacketSize: %d, iWriteStep: %d\n", iPacketSize, iWriteStep);
 
 	auto bSendStatus = false;
 
 	bSendStatus = !IDList ?
-		this->m_pNetwork->SendPacketAll(pPacket, iPacketSize) :
-		this->m_pNetwork->SendPacketIncludeID(pPacket, iPacketSize, IDList);
+		GetNetwork()->SendPacketAll(pPacket, iPacketSize) :
+		GetNetwork()->SendPacketIncludeID(pPacket, iPacketSize, IDList);
 
 	delete[] pPacket;
 
@@ -561,17 +592,12 @@ bool CNetworkChatManager::SendNetMsg(MSG_TYPE MsgType, char* szMessage, int iMes
 
 bool CNetworkChatManager::SendLocalMsg(char* szAuthor, char* szMessage, int iMessageID)
 {
-	return this->m_pChatData->SendNewMessage(szAuthor, szMessage, iMessageID);
-}
-
-CChatData* CNetworkChatManager::GetChatData()
-{
-	return this->m_pChatData;
+	return GetChatData()->SendNewMessage(szAuthor, szMessage, iMessageID);
 }
 
 size_t CNetworkChatManager::GetChatArraySize()
 {
-	return this->m_pChatData->GetMessagesArraySize();
+	return GetChatData()->GetMessagesArraySize();
 }
 
 bool CNetworkChatManager::IsNeedExit()
@@ -581,7 +607,7 @@ bool CNetworkChatManager::IsNeedExit()
 
 bool CNetworkChatManager::IsHost()
 {
-	return this->m_bIsHost && this->m_pNetwork->IsHost();
+	return this->m_bIsHost && GetNetwork()->IsHost();
 }
 
 MSG_TYPE CNetworkChatManager::GetMsgType(char* szMsg)
@@ -639,13 +665,14 @@ bool CNetworkChatManager::DisconnectUser(int ID)
 		return false;
 
 	User->m_bConnected = false;
+	User->m_bIsAdmin = false;
 
 	return true;
 }
 
 void CNetworkChatManager::ResendLastMessagesToClient(int ID, int iNumberToResend)
 {
-	printf("[+] %s() -> Resend last %d messages to %d client\n", __FUNCTION__, iNumberToResend, ID);
+	LOGGER("Resend last %d messages to %d client\n", iNumberToResend, ID);
 
 	std::vector<int> IDList{ ID };
 
@@ -657,13 +684,23 @@ void CNetworkChatManager::ResendLastMessagesToClient(int ID, int iNumberToResend
 		if (!message)
 			continue;
 
-		SendChatToClient(message->m_szUsername, message->m_szMessage, message->m_iMessageID, &IDList);
+		SendChatMessageToClient(message->m_szUsername, message->m_szMessage, message->m_iMessageID, &IDList);
 	}
 }
 
 bool CNetworkChatManager::IsAdmin()
 {
 	return this->m_bIsAdmin;
+}
+
+CNetwork* CNetworkChatManager::GetNetwork()
+{
+	return this->m_pNetwork;
+}
+
+CChatData* CNetworkChatManager::GetChatData()
+{
+	return this->m_pChatData;
 }
 
 chat_user* CNetworkChatManager::GetUser(int ID)

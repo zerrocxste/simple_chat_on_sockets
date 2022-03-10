@@ -19,7 +19,6 @@ public:
 	void Shutdown();
 	void ReceivePacketsRoutine();
 	bool SendChatMessage(char* szMessage);
-	CChatData* GetChatData();
 	size_t GetChatArraySize();
 	bool IsNeedExit();
 	bool IsHost();
@@ -30,6 +29,7 @@ public:
 	bool SendConnectedMessage(int ID = 0);
 	bool DeleteChatMessage(std::vector<int>* MsgsList);
 	bool IsAdmin();
+	CChatData* GetChatData();
 private:
 	bool m_bIsInitialized;
 	bool m_bIsHost;
@@ -43,7 +43,7 @@ private:
 	int m_iUsernameLength;
 	std::map<int, chat_user> m_vUsersList;
 
-	int* PacketReadInteger(char* pData, int* pReadCount);
+	int PacketReadInteger(char* pData, int* pReadCount);
 	char* PacketReadString(char* pData, int iStrLength, int* pReadCount);
 	char* PacketReadNetString(char* pData, int* pReadCount, int* pStrLength = nullptr);
 	void PacketWriteInteger(char* pData, int* pWriteCount, int iValue);
@@ -51,8 +51,9 @@ private:
 	void PacketWriteData(char* pData, int* pWriteCount, char* szValue, int iValueLength);
 	void PacketWriteNetString(char* pData, int* pWriteCount, char* szValue, int iValueLength);
 	bool IsValidStrMessage(char* szString, int iStringLength);
-	bool SendChatToHost(char* szMessage);
-	bool SendChatToClient(char* szUsername, char* szMessage, int iMessageID = UNTRACKED_MESSAGE, std::vector<int>* IDList = nullptr);
+	bool SendChatMessageToHost(char* szMessage);
+	bool SendChatMessageToClient(char* szUsername, char* szMessage, int iMessageID = UNTRACKED_MESSAGE, std::vector<int>* IDList = nullptr);
+	bool SendNewChatMessageToClient(char* szUsername, char* szMessage, std::vector<int>* IDList = nullptr);
 	int CalcNetData(int iValueLength);
 	int CalcNetString(int iValueLength);
 	MSG_TYPE PacketReadMsgType(char* pData, int* pReadCount);
@@ -61,6 +62,7 @@ private:
 	MSG_TYPE GetMsgType(char* szMsg);
 	bool GrantAdmin(char* szLogin, char* szPassword, int iConnectionID);
 	bool SendStatusAdmin(int ID, bool IsGranted);
+	CNetwork* GetNetwork();
 	chat_user* GetUser(int ID);
 };
 
