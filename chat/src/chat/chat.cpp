@@ -143,6 +143,16 @@ void Chat::GuiPresents::GuiChat(bool* baBackButton)
 	{
 		ImGui::PushStyleVar(ImGuiStyleVar_::ImGuiStyleVar_WindowPadding, ImVec2(3.f, 7.f));
 		ImGui::BeginChild("##fds", ImVec2(), true, ImGuiWindowFlags_::ImGuiWindowFlags_NoBackground);
+
+		bool bNeedUpdateScroll = false;
+		static std::size_t iPrevMessagesCount = 0;
+		if (g_pNetworkChatManager->GetChatArraySize() != iPrevMessagesCount)
+		{
+			iPrevMessagesCount = g_pNetworkChatManager->GetChatArraySize();
+			bNeedUpdateScroll = true;
+			LOGGER("Updated chat array size: %d\n", iPrevMessagesCount);
+		}
+
 		for (auto itMessage = g_pNetworkChatManager->GetChatData()->Begin(); itMessage != g_pNetworkChatManager->GetChatData()->End(); itMessage++)
 		{
 			auto message = *itMessage;
@@ -195,6 +205,12 @@ void Chat::GuiPresents::GuiChat(bool* baBackButton)
 			//ImGui::Text("[%d] %s: %s", message->m_iMessageID, message->m_szUsername, message->m_szMessage);
 			ImGui::Text("%s: %s", message->m_szUsername, message->m_szMessage);
 		}
+
+		if (bNeedUpdateScroll)
+		{
+			ImGui::SetScrollY(fabs(ImGui::GetContentRegionAvail().y));
+		}
+
 		ImGui::EndChild();
 		ImGui::PopStyleVar();
 	}
