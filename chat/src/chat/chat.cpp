@@ -141,8 +141,10 @@ void Chat::GuiPresents::GuiChat(bool* baBackButton)
 
 	ImGui::BeginChild("##ChatBox", ImVec2(vContentRegionAvail.x, vContentRegionAvail.y - 93.f));
 	{
-		ImGui::PushStyleVar(ImGuiStyleVar_::ImGuiStyleVar_WindowPadding, ImVec2(3.f, 7.f));
-		ImGui::BeginChild("##fds", ImVec2(), true, ImGuiWindowFlags_::ImGuiWindowFlags_NoBackground);
+		static auto WindowStyle = 0;
+
+		ImGui::PushStyleVar(ImGuiStyleVar_::ImGuiStyleVar_WindowPadding, ImVec2(3.f, 0));
+		ImGui::BeginChild("##fds", ImVec2(), true, ImGuiWindowFlags_::ImGuiWindowFlags_NoBackground | WindowStyle);
 
 		bool bNeedUpdateScroll = false;
 		static std::size_t iPrevMessagesCount = 0;
@@ -160,9 +162,6 @@ void Chat::GuiPresents::GuiChat(bool* baBackButton)
 			if (!message)
 				continue;
 
-			auto ID = message->m_iMessageID;
-			auto IDStr = std::string("##") + std::to_string(ID);
-
 			auto fFindInVec = [](std::vector<int>* vSearchStr, int iSearchElement, std::vector<int>::iterator* it) -> bool {
 
 				auto itSearch = std::find(vSearchStr->begin(), vSearchStr->end(), iSearchElement);
@@ -175,6 +174,9 @@ void Chat::GuiPresents::GuiChat(bool* baBackButton)
 
 				return false;
 			};
+
+			auto ID = message->m_iMessageID;
+			auto IDStr = std::string("##") + std::to_string(ID);
 
 			std::vector<int>::iterator itSearch;
 
@@ -206,10 +208,14 @@ void Chat::GuiPresents::GuiChat(bool* baBackButton)
 			ImGui::Text("%s: %s", message->m_szUsername, message->m_szMessage);
 		}
 
+		auto ContentRegionAvailHeight = fabs(ImGui::GetContentRegionAvail().y);
+
 		if (bNeedUpdateScroll)
-		{
-			ImGui::SetScrollY(fabs(ImGui::GetContentRegionAvail().y));
-		}
+			ImGui::SetScrollY(ContentRegionAvailHeight);
+
+		WindowStyle = ImGui::GetScrollY() >= ContentRegionAvailHeight ? ImGuiWindowFlags_::ImGuiWindowFlags_NoScrollbar : 0;
+
+		ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 6.f);
 
 		ImGui::EndChild();
 		ImGui::PopStyleVar();
