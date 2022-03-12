@@ -31,7 +31,7 @@ void Chat::StartupNetwork(bool IsHost, char szUsername[32])
 	ChatModePage = SELECT_MODE;
 	AppMode = PROCESS_INITIALIZING;
 
-	g_pNetworkChatManager = std::make_unique<CNetworkChatManager>(IsHost, szUsername, (char*)"127.0.0.1", 80, MAX_PROCESSED_USERS_IN_CHAT);
+	g_pNetworkChatManager = std::make_unique<CNetworkChatManager>(IsHost, szUsername, (char*)"127.0.0.1", 1488, MAX_PROCESSED_USERS_IN_CHAT);
 	memset(szUsername, 0, 32);
 
 	printf("[+] %s -> Start initialize network at: %s\n", __FUNCTION__, IsHost ? "HOST" : "CLIENT");
@@ -139,9 +139,10 @@ void Chat::GuiPresents::GuiChat(bool* baBackButton)
 
 	auto IsDeleteMode = !vSelectedMessages.empty();
 
-	//ImGui::PushStyleVar(ImGuiStyleVar_::ImGuiStyleVar_WindowPadding, ImVec2(12.f, 12.f));
 	ImGui::BeginChild("##ChatBox", ImVec2(vContentRegionAvail.x, vContentRegionAvail.y - 93.f));
 	{
+		ImGui::PushStyleVar(ImGuiStyleVar_::ImGuiStyleVar_WindowPadding, ImVec2(3.f, 7.f));
+		ImGui::BeginChild("##fds", ImVec2(), true, ImGuiWindowFlags_::ImGuiWindowFlags_NoBackground);
 		for (auto itMessage = g_pNetworkChatManager->GetChatData()->Begin(); itMessage != g_pNetworkChatManager->GetChatData()->End(); itMessage++)
 		{
 			auto message = *itMessage;
@@ -191,14 +192,13 @@ void Chat::GuiPresents::GuiChat(bool* baBackButton)
 
 			ImGui::SameLine();
 
-			//auto CursorPos = ImGui::GetCursorPos();
-			//ImGui::SetCursorPos(ImVec2(CursorPos.x + 5.f, CursorPos.y + 5.f));
-
-			ImGui::Text("[%d] %s: %s", message->m_iMessageID, message->m_szUsername, message->m_szMessage);
+			//ImGui::Text("[%d] %s: %s", message->m_iMessageID, message->m_szUsername, message->m_szMessage);
+			ImGui::Text("%s: %s", message->m_szUsername, message->m_szMessage);
 		}
+		ImGui::EndChild();
+		ImGui::PopStyleVar();
 	}
 	ImGui::EndChild();
-	//ImGui::PopStyleVar();
 
 	if (!IsDeleteMode)
 	{

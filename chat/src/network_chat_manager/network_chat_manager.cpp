@@ -14,7 +14,7 @@ bool OnConnectionNotification(bool bIsPreConnectionStep, int iConnectionCount, i
 {
 	if (bIsPreConnectionStep)
 	{
-		printf("[+] %s() -> iConnectionCount: %d, %s:%d\n", __FUNCTION__, iConnectionCount, szIP, iPort);
+		LOGGER("iConnectionCount: %d, %s:%d\n", iConnectionCount, szIP, iPort);
 		g_pNetworkChatManager->AddUser(iConnectionCount, iIp, iPort);
 	}
 	else
@@ -28,6 +28,7 @@ bool OnConnectionNotification(bool bIsPreConnectionStep, int iConnectionCount, i
 
 bool OnDisconnectionNotification(int iConnectionCount)
 {
+	LOGGER("iConnectionCount: %d\n", iConnectionCount);
 	return g_pNetworkChatManager->DisconnectUser(iConnectionCount);
 }
 
@@ -471,15 +472,13 @@ bool CNetworkChatManager::SendConnectedMessage(int ID)
 {
 	auto ret = false;
 
-	auto iUsernameLength = strlen(this->m_szUsername);
-
-	auto MsgSize = CalcNetString(iUsernameLength);
+	auto MsgSize = CalcNetString(this->m_iUsernameLength);
 
 	char* buff = new char[MsgSize];
 
 	int iWriteCount = 0;
 
-	PacketWriteNetString(buff, &iWriteCount, this->m_szUsername, iUsernameLength);
+	PacketWriteNetString(buff, &iWriteCount, this->m_szUsername, this->m_iUsernameLength);
 
 	if (IsHost())
 	{
