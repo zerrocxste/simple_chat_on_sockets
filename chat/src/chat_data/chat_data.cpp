@@ -2,7 +2,7 @@
 
 CChatData::CChatData()
 {
-	LOGGER("Contructor called\n");
+	TRACE_FUNC("Contructor called\n");
 
 	this->m_ppMessagesArray = 0;
 	this->m_mMessagesArraySize = 0;
@@ -10,7 +10,7 @@ CChatData::CChatData()
 
 CChatData::~CChatData()
 {
-	LOGGER("Destructor called\n");
+	TRACE_FUNC("Destructor called\n");
 
 	CleanupData();
 }
@@ -108,7 +108,7 @@ pMessage CChatData::AllocateNewMessagePointer(size_t SizeUsername, size_t SizeMe
 	this->m_ppMessagesArray[this->m_mMessagesArraySize]->m_szMessage = (char*)realloc(nullptr, SizeMessage + 1);
 	memset(this->m_ppMessagesArray[this->m_mMessagesArraySize]->m_szMessage, 0, SizeMessage + 1);
 
-	LOGGER("Allocated memory for message packet. packet va: %p, username va: %p, message va: %p\n", 
+	TRACE_FUNC("Allocated memory for message packet. packet va: %p, username va: %p, message va: %p\n",
 		this->m_ppMessagesArray[this->m_mMessagesArraySize],
 		this->m_ppMessagesArray[this->m_mMessagesArraySize]->m_szUsername,
 		this->m_ppMessagesArray[this->m_mMessagesArraySize]->m_szMessage);

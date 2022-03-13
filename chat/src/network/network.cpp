@@ -11,7 +11,7 @@ CNetwork::CNetwork(bool IsHost, char* pszIP, int iPort, int iMaxProcessedUsersNu
 	m_iConnectionCount(0),
 	m_hThreadConnectionsHost(0)
 {
-	LOGGER("Contructor called\n");
+	TRACE_FUNC("Contructor called\n");
 
 	memset(&this->m_WSAdata, 0, sizeof(WSADATA));
 	memset(&this->m_SockAddrIn, 0, sizeof(SOCKADDR_IN));
@@ -19,7 +19,7 @@ CNetwork::CNetwork(bool IsHost, char* pszIP, int iPort, int iMaxProcessedUsersNu
 
 CNetwork::~CNetwork()
 {
-	LOGGER("Destructor called\n");
+	TRACE_FUNC("Destructor called\n");
 
 	closesocket(this->m_Socket);
 	DropConnections();
@@ -179,13 +179,13 @@ bool CNetwork::InitializeAsHost()
 {
 	if (bind(this->m_Socket, (sockaddr*)&this->m_SockAddrIn, this->m_iSockAddrInLength) == SOCKET_ERROR)
 	{
-		MessageBox(NULL, "Socket bind failed", "", MB_OK | MB_ICONERROR);
+		TRACE_FUNC("Socket bind failed WSAGetLastError: %d\n", WSAGetLastError());
 		return false;
 	}
 
 	if (listen(this->m_Socket, SOMAXCONN) == SOCKET_ERROR)
 	{
-		MessageBox(NULL, "Socket listen error", "", MB_OK | MB_ICONERROR);
+		TRACE_FUNC("Listen failed WSAGetLastError: %d\n", WSAGetLastError());
 		return false;
 	}
 
@@ -207,11 +207,11 @@ bool CNetwork::InitializeAsHost()
 					LastError == WSAEOPNOTSUPP ||
 					LastError == WSAECONNRESET)
 				{
-					LOGGER("Failed to client connection at: %d, Error code: %d\n", (int)_this->m_ClientsList.size(), LastError);
+					TRACE_FUNC("Failed to client connection at: %d, Error code: %d\n", (int)_this->m_ClientsList.size(), LastError);
 					continue;
 				}
 
-				LOGGER("Shutdown client connection handler thread WSAErrorcode: %d\n", LastError);
+				TRACE_FUNC("Shutdown client connection handler thread WSAErrorcode: %d\n", LastError);
 				break;
 			}
 
@@ -219,16 +219,16 @@ bool CNetwork::InitializeAsHost()
 			auto szIP = _this->GetStrIpFromSockAddrIn(&SockAddrIn);
 			auto iPort = _this->GetPortFromSockAddrIn(&SockAddrIn);
 
-			LOGGER("Await new connection: %s:%d", szIP, iPort);
+			TRACE_FUNC("Await new connection: %s:%d\n", szIP, iPort);
 
 			if (!_this->InvokeClientConnectionNotification(true, _this->m_iConnectionCount, iIP, szIP, iPort))
 			{
-				LOGGER("Aborted connection by host user clientid: %d\n", (int)_this->m_ClientsList.size());
+				TRACE_FUNC("Aborted connection by host user clientid: %d\n", (int)_this->m_ClientsList.size());
 				_this->DisconnectSocket(Connection);
 				continue;
 			}
 
-			LOGGER("Connected clientid: %d\n", (int)_this->m_ClientsList.size());
+			TRACE_FUNC("Connected clientid: %d\n", (int)_this->m_ClientsList.size());
 
 			struct host_receive_thread_arg
 			{
@@ -252,9 +252,9 @@ bool CNetwork::InitializeAsHost()
 
 					if (recv_ret > 0)
 					{
-						if (DataSize)
+						if (DataSize > 0)
 						{
-							LOGGER("Received data at clientid: %d, data size: %d\n", ConnectionID, DataSize);
+							TRACE_FUNC("Received data at clientid: %d, data size: %d\n", ConnectionID, DataSize);
 							auto pData = new char[DataSize];
 							recv(Client->m_ConnectionSocket, (char*)pData, DataSize, NULL);
 							net_packet* NetPacket = new net_packet(pData, DataSize, ConnectionID);
@@ -263,14 +263,14 @@ bool CNetwork::InitializeAsHost()
 					}
 					else
 					{
-						LOGGER("Dropped connection at clientid: %d\n", ConnectionID);
+						TRACE_FUNC("Dropped connection at clientid: %d\n", ConnectionID);
 						_this->InvokeClientDisconnectionNotification(ConnectionID);
 						_this->DisconnectClient(Client);
 						break;
 					}
 				}
 
-				LOGGER("Exit receive thread clientid: %d\n", ConnectionID);
+				TRACE_FUNC("Exit receive thread clientid: %d\n", ConnectionID);
 
 				return 0;
 			};
@@ -322,9 +322,9 @@ bool CNetwork::InitializeAsClient()
 
 			if (recv_ret > 0)
 			{
-				if (DataSize)
+				if (DataSize > 0)
 				{
-					LOGGER("Received data from host, size: %d\n", DataSize);
+					TRACE_FUNC("Received data from host, size: %d\n", DataSize);
 					auto pData = new char[DataSize];
 					recv(Client->m_ConnectionSocket, (char*)pData, DataSize, NULL);
 					net_packet* NetPacket = new net_packet(pData, DataSize, 0);
@@ -333,7 +333,7 @@ bool CNetwork::InitializeAsClient()
 			}
 			else
 			{
-				LOGGER("Host was closed\n");
+				TRACE_FUNC("Host was closed\n");
 				_this->m_bServerWasDowned = true;
 				break;
 			}

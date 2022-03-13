@@ -152,7 +152,7 @@ void Chat::GuiPresents::GuiChat(bool* baBackButton)
 		{
 			iPrevMessagesCount = g_pNetworkChatManager->GetChatArraySize();
 			bNeedUpdateScroll = true;
-			LOGGER("Updated chat array size: %d\n", iPrevMessagesCount);
+			TRACE_FUNC("Updated chat array size: %d\n", iPrevMessagesCount);
 		}
 
 		for (auto itMessage = g_pNetworkChatManager->GetChatData()->Begin(); itMessage != g_pNetworkChatManager->GetChatData()->End(); itMessage++)
@@ -190,12 +190,12 @@ void Chat::GuiPresents::GuiChat(bool* baBackButton)
 					{
 						if (IsFounded)
 						{
-							LOGGER("Unselected %d message\n", ID);
+							TRACE_FUNC("Unselected %d message\n", ID);
 							vSelectedMessages.erase(itSearch);
 						}
 						else
 						{
-							LOGGER("Selected %d message\n", ID);
+							TRACE_FUNC("Selected %d message\n", ID);
 							vSelectedMessages.push_back(ID);
 						}
 					}

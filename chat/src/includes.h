@@ -34,9 +34,11 @@
 #pragma comment (lib, "d3d9.lib")
 
 #ifdef _USERDEBUG
-#define LOGGER(Text, ...) printf("[+] %s() -> " Text, __FUNCTION__, __VA_ARGS__)
+#define TRACE_FUNC(Text, ...) printf("[+] %s() -> " Text, __FUNCTION__, __VA_ARGS__)
+#define TRACE(Text, ...) printf(Text, __VA_ARGS__)
 #else
-#define LOGGER(Text, ...)
+#define TRACE_FUNC(Text, ...)
+#define TRACE(Text, ...)
 #endif // _USERDEBUG
 
 #include "../libs/DXWF/framework.h"
