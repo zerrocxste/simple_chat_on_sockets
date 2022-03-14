@@ -1,11 +1,5 @@
 #include "includes.h"
 
-bool IsLittleEndian()
-{
-	int i = 1;
-	return (*(unsigned char*)&i) == 0x1;
-}
-
 namespace console
 {
 	FILE* out;

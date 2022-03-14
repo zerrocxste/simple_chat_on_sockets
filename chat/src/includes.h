@@ -42,7 +42,12 @@
 #endif // _USERDEBUG
 
 #include "../libs/DXWF/framework.h"
-#pragma comment (lib, "libs/DXWF/DXWF.lib")
+
+#ifdef _WIN64
+#pragma comment (lib, "libs/DXWF/x64/DXWF.lib")
+#else
+#pragma comment (lib, "libs/DXWF/x86/DXWF.lib")
+#endif // _WIN64
 
 #include "../libs/ImGui/imgui.h"
 #include "../libs/ImGui/imgui_internal.h"
@@ -59,5 +64,3 @@
 #include "globals/globals.h"
 #include "gui/gui.h"
 #include "chat/chat.h"
-
-extern bool IsLittleEndian();

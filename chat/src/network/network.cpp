@@ -28,12 +28,17 @@ CNetwork::~CNetwork()
 
 bool CNetwork::SendToSocket(SOCKET Socket, void* pPacket, int iSize)
 {
-	if (send(Socket, (const char*)&iSize, sizeof(int), NULL) != SOCKET_ERROR)
+	auto ret = false;
+
+	int iPacketSize = iSize;
+
+	if (send(Socket, (const char*)&iPacketSize, GetPacketInfoLength(), 0) == GetPacketInfoLength())
 	{
-		if (send(Socket, (const char*)pPacket, iSize, NULL) != SOCKET_ERROR)
-			return true;
+		if (send(Socket, (const char*)pPacket, iSize, 0) == iSize)
+			ret = true;
 	}
-	return false;
+
+	return ret;
 }
 
 bool CNetwork::SendPacketAll(void* pPacket, int iSize)
@@ -121,19 +126,27 @@ bool CNetwork::SendPacketIncludeID(void* pPacket, int iSize, std::vector<int>* v
 
 bool CNetwork::ReceivePacket(net_packet* pPacket)
 {
-	if (!this->m_PacketsList.size())
-		return false;
+	auto ret = false;
 
-	auto it = this->m_PacketsList.begin();
-	auto NetPacket = *it;
+	PacketsListCriticalSectionLock();
 
-	if (!NetPacket)
-		return false;
+	if (!this->m_PacketsList.empty())
+	{
+		auto it = this->m_PacketsList.begin();
+		auto NetPacket = *it;
 
-	*pPacket = *NetPacket;
-	this->m_PacketsList.erase(it);
+		if (NetPacket)
+		{
+			*pPacket = *NetPacket;
+			ret = true;
+		}
 
-	return true;
+		this->m_PacketsList.erase(it);
+	}
+
+	PacketsListCriticalSectionUnlock();
+
+	return ret;
 }
 
 void CNetwork::DropConnections()
@@ -248,17 +261,24 @@ bool CNetwork::InitializeAsHost()
 				{
 					int DataSize = 0;
 
-					auto recv_ret = recv(Client->m_ConnectionSocket, (char*)&DataSize, sizeof(int), NULL);
+					auto recv_ret = recv(Client->m_ConnectionSocket, (char*)&DataSize, _this->GetPacketInfoLength(), NULL);
 
-					if (recv_ret > 0)
+					if (recv_ret)
 					{
-						if (DataSize > 0)
+						if (recv_ret == _this->GetPacketInfoLength() && DataSize > 0)
 						{
-							TRACE_FUNC("Received data at clientid: %d, data size: %d\n", ConnectionID, DataSize);
-							auto pData = new char[DataSize];
+							TRACE_FUNC("Received data at clientid: %d, DataSize: %d\n", ConnectionID, DataSize);
+
+							auto pData = malloc(DataSize);
+							if (!pData)
+							{
+								TRACE_FUNC("Failed to allocate memory, DataSize: %d\n", DataSize);
+								continue;
+							}
+
 							recv(Client->m_ConnectionSocket, (char*)pData, DataSize, NULL);
-							net_packet* NetPacket = new net_packet(pData, DataSize, ConnectionID);
-							_this->m_PacketsList.push_back(NetPacket);
+
+							_this->AddToPacketList(new net_packet(pData, DataSize, ConnectionID));
 						}
 					}
 					else
@@ -268,6 +288,8 @@ bool CNetwork::InitializeAsHost()
 						_this->DisconnectClient(Client);
 						break;
 					}
+
+					std::this_thread::sleep_for(std::chrono::milliseconds(1));
 				}
 
 				TRACE_FUNC("Exit receive thread clientid: %d\n", ConnectionID);
@@ -318,17 +340,24 @@ bool CNetwork::InitializeAsClient()
 		{
 			int DataSize = 0;
 
-			auto recv_ret = recv(Client->m_ConnectionSocket, (char*)&DataSize, sizeof(int), NULL);
+			auto recv_ret = recv(Client->m_ConnectionSocket, (char*)&DataSize, _this->GetPacketInfoLength(), NULL);
 
-			if (recv_ret > 0)
+			if (recv_ret)
 			{
-				if (DataSize > 0)
+				if (recv_ret == _this->GetPacketInfoLength() && DataSize > 0)
 				{
 					TRACE_FUNC("Received data from host, size: %d\n", DataSize);
-					auto pData = new char[DataSize];
+
+					auto pData = malloc(DataSize);
+					if (!pData)
+					{
+						TRACE_FUNC("Failed to allocate memory, DataSize: %d\n", DataSize);
+						continue;
+					}
+
 					recv(Client->m_ConnectionSocket, (char*)pData, DataSize, NULL);
-					net_packet* NetPacket = new net_packet(pData, DataSize, 0);
-					_this->m_PacketsList.push_back(NetPacket);
+
+					_this->AddToPacketList(new net_packet(pData, DataSize, 0));
 				}
 			}
 			else
@@ -337,6 +366,8 @@ bool CNetwork::InitializeAsClient()
 				_this->m_bServerWasDowned = true;
 				break;
 			}
+
+			std::this_thread::sleep_for(std::chrono::milliseconds(1));
 		}
 
 		return 0;
@@ -348,6 +379,25 @@ bool CNetwork::InitializeAsClient()
 	Client.m_iThreadId = CLIENT_SOCKET;
 
 	return true;
+}
+
+void CNetwork::PacketsListCriticalSectionLock()
+{
+	this->m_mtxExchangePacketsData.lock();
+}
+
+void CNetwork::PacketsListCriticalSectionUnlock()
+{
+	this->m_mtxExchangePacketsData.unlock();
+}
+
+void CNetwork::AddToPacketList(net_packet* pNetPacket)
+{
+	PacketsListCriticalSectionLock();
+
+	this->m_PacketsList.push_back(pNetPacket);
+
+	PacketsListCriticalSectionUnlock();
 }
 
 bool CNetwork::AddClientsConnectionNotificationCallback(f_ClientConnectionNotification pf_NewClientsNotificationCallback)
@@ -504,4 +554,9 @@ bool CNetwork::IntegerIpToStr(int iIP, char* szIP)
 	sprintf(szIP, "%d.%d.%d.%d\0", pIP[0], pIP[1], pIP[2], pIP[3]);
 
 	return true;
+}
+
+int CNetwork::GetPacketInfoLength()
+{
+	return sizeof(int);
 }

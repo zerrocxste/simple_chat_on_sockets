@@ -37,6 +37,12 @@
     <Filter Include="src\chat">
       <UniqueIdentifier>{4cac66b0-31c9-4190-8201-de3a8fa807bf}</UniqueIdentifier>
     </Filter>
+    <Filter Include="libs\DXWF\x86">
+      <UniqueIdentifier>{1ed93b62-a25f-4159-ba63-76ec7337b6ec}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="libs\DXWF\x64">
+      <UniqueIdentifier>{5850a930-95ae-44fd-9cad-12a2e08e9ce7}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\main.cpp">
@@ -52,9 +58,6 @@
       <Filter>libs\ImGui</Filter>
     </ClCompile>
     <ClCompile Include="libs\ImGui\imgui_impl_dx9.cpp">
-      <Filter>libs\ImGui</Filter>
-    </ClCompile>
-    <ClCompile Include="libs\ImGui\imgui_impl_dx11.cpp">
       <Filter>libs\ImGui</Filter>
     </ClCompile>
     <ClCompile Include="libs\ImGui\imgui_impl_win32.cpp">
@@ -107,9 +110,6 @@
     <ClInclude Include="libs\ImGui\imgui_impl_dx9.h">
       <Filter>libs\ImGui</Filter>
     </ClInclude>
-    <ClInclude Include="libs\ImGui\imgui_impl_dx11.h">
-      <Filter>libs\ImGui</Filter>
-    </ClInclude>
     <ClInclude Include="libs\ImGui\imgui_impl_win32.h">
       <Filter>libs\ImGui</Filter>
     </ClInclude>
@@ -154,8 +154,11 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <Library Include="libs\DXWF\DXWF.lib">
-      <Filter>libs\DXWF</Filter>
+    <Library Include="libs\DXWF\x86\DXWF.lib">
+      <Filter>libs\DXWF\x86</Filter>
+    </Library>
+    <Library Include="libs\DXWF\x64\DXWF.lib">
+      <Filter>libs\DXWF\x64</Filter>
     </Library>
   </ItemGroup>
 </Project>

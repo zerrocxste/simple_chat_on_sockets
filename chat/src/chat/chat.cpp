@@ -31,7 +31,7 @@ void Chat::StartupNetwork(bool IsHost, char szUsername[32])
 	ChatModePage = SELECT_MODE;
 	AppMode = PROCESS_INITIALIZING;
 
-	g_pNetworkChatManager = std::make_unique<CNetworkChatManager>(IsHost, szUsername, (char*)"127.0.0.1", 1488, MAX_PROCESSED_USERS_IN_CHAT);
+	g_pNetworkChatManager = std::make_unique<CNetworkChatManager>(IsHost, szUsername, (char*)"193.124.128.13", 1337, MAX_PROCESSED_USERS_IN_CHAT);
 	memset(szUsername, 0, 32);
 
 	printf("[+] %s -> Start initialize network at: %s\n", __FUNCTION__, IsHost ? "HOST" : "CLIENT");

@@ -202,9 +202,14 @@ void CNetworkChatManager::ReceivePacketsRoutine()
 		if (IsHost())
 			return;
 
-		auto szMessage = PacketReadNetString(pData, &iReadCount);
+		int iMessageLength = 0;
+		auto szMessage = PacketReadNetString(pData, &iReadCount, &iMessageLength);
 
-		bool IsGranted = false;
+		if (!IsValidStrMessage(szMessage, iMessageLength))
+		{
+			TRACE_FUNC("Invalid string. Message length: %d\n", iMessageLength);
+			return;
+		}
 
 		if (!strcmp(szMessage, ADMIN_GRANTED))
 		{

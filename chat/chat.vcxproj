@@ -22,7 +22,6 @@
     <ClCompile Include="libs\ImGui\imgui.cpp" />
     <ClCompile Include="libs\ImGui\imgui_demo.cpp" />
     <ClCompile Include="libs\ImGui\imgui_draw.cpp" />
-    <ClCompile Include="libs\ImGui\imgui_impl_dx11.cpp" />
     <ClCompile Include="libs\ImGui\imgui_impl_dx9.cpp" />
     <ClCompile Include="libs\ImGui\imgui_impl_win32.cpp" />
     <ClCompile Include="libs\ImGui\imgui_tables.cpp" />
@@ -41,7 +40,6 @@
     <ClInclude Include="libs\ImGui\imconfig.h" />
     <ClInclude Include="libs\ImGui\imgui.h" />
     <ClInclude Include="libs\ImGui\imgui_fonts.h" />
-    <ClInclude Include="libs\ImGui\imgui_impl_dx11.h" />
     <ClInclude Include="libs\ImGui\imgui_impl_dx9.h" />
     <ClInclude Include="libs\ImGui\imgui_impl_win32.h" />
     <ClInclude Include="libs\ImGui\imgui_internal.h" />
@@ -60,7 +58,12 @@
     <ClInclude Include="src\window\window.h" />
   </ItemGroup>
   <ItemGroup>
-    <Library Include="libs\DXWF\DXWF.lib" />
+    <Library Include="libs\DXWF\x64\DXWF.lib">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+    </Library>
+    <Library Include="libs\DXWF\x86\DXWF.lib">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </Library>
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
@@ -68,6 +71,7 @@
     <ProjectGuid>{11011944-1b62-473d-b426-06d210a06d17}</ProjectGuid>
     <RootNamespace>chat</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+    <PreferredToolArchitecture>x64</PreferredToolArchitecture>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -81,7 +85,8 @@
     <UseDebugLibraries>false</UseDebugLibraries>
     <PlatformToolset>v142</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
-    <CharacterSet>Unicode</CharacterSet>
+    <CharacterSet>MultiByte</CharacterSet>
+    <SpectreMitigation>false</SpectreMitigation>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>

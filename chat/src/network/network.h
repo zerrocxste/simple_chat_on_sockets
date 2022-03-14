@@ -29,9 +29,13 @@ private:
 	bool m_bServerWasDowned;
 	f_ClientConnectionNotification m_pf_ClientConnectionNotificationCallback;
 	f_ClientDisconnectionNotification m_pf_ClientDisconnectionNotificationCallback;
+	std::mutex m_mtxExchangePacketsData;
 
 	bool InitializeAsHost();
 	bool InitializeAsClient();
+	void PacketsListCriticalSectionLock();
+	void PacketsListCriticalSectionUnlock();
+	void AddToPacketList(net_packet* pNetPacket);
 	bool InvokeClientConnectionNotification(bool bIsPreConnectionStep, int iConnectionCount, int iIP, char* szIP, int iPort);
 	bool InvokeClientDisconnectionNotification(int iConnectionCount);
 	bool SendToSocket(SOCKET Socket, void* pPacket, int iSize);
@@ -39,6 +43,7 @@ private:
 	void DropConnections();
 	void DisconnectSocket(SOCKET Socket);
 	void DisconnectClient(client_receive_data_thread* Client);
+	int GetPacketInfoLength();
 public:
 	CNetwork(bool IsHost, char* pszIP, int iPort, int iMaxProcessedUsersNumber);
 	~CNetwork();

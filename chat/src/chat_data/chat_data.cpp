@@ -15,7 +15,7 @@ CChatData::~CChatData()
 	CleanupData();
 }
 
-bool CChatData::SendNewMessage(char* szUsername, char* szMessage, int iMessageCount, size_t UsernameSize, size_t MessageSize)
+bool CChatData::SendNewMessage(char* szUsername, char* szMessage, int iMessageCount, std::size_t UsernameSize, std::size_t MessageSize)
 {
 	if (!szUsername || !szMessage)
 		return false;
@@ -38,7 +38,7 @@ bool CChatData::SendNewMessage(char* szUsername, char* szMessage, int iMessageCo
 	return true;
 }
 
-bool CChatData::SendNewMessage(char* szData, int iMessageStartAfter, int iMessageCount, size_t DataSize)
+bool CChatData::SendNewMessage(char* szData, int iMessageStartAfter, int iMessageCount, std::size_t DataSize)
 {
 	if (!szData)
 		return false;
@@ -69,7 +69,7 @@ ppArrayMessages CChatData::GetChat()
 	return this->m_ppMessagesArray;
 }
 
-size_t CChatData::GetMessagesArraySize()
+std::size_t CChatData::GetMessagesArraySize()
 {
 	return this->m_mMessagesArraySize;
 }
@@ -84,7 +84,7 @@ CChatData::Iterator CChatData::End()
 	return this->m_ppMessagesArray + this->m_mMessagesArraySize;
 }
 
-CChatData::Iterator CChatData::At(int c)
+CChatData::Iterator CChatData::At(std::size_t c)
 {
 	return this->m_ppMessagesArray + c;
 }
@@ -94,7 +94,7 @@ std::uint8_t CChatData::GetPointerSize()
 	return sizeof(std::uintptr_t);
 }
 
-pMessage CChatData::AllocateNewMessagePointer(size_t SizeUsername, size_t SizeMessage)
+pMessage CChatData::AllocateNewMessagePointer(std::size_t SizeUsername, std::size_t SizeMessage)
 {
 	auto PointerSize = GetPointerSize();
 
@@ -116,7 +116,7 @@ pMessage CChatData::AllocateNewMessagePointer(size_t SizeUsername, size_t SizeMe
 	return this->m_ppMessagesArray[this->m_mMessagesArraySize];
 }
 
-void CChatData::AddMessage(char* szUsername, size_t UsernameSize, char* szMessage, size_t MessageSize, int iMessageCount, pMessage Message)
+void CChatData::AddMessage(char* szUsername, std::size_t UsernameSize, char* szMessage, std::size_t MessageSize, int iMessageCount, pMessage Message)
 {
 	Message->m_iMessageID = iMessageCount;
 	memcpy(Message->m_szUsername, szUsername, UsernameSize);
