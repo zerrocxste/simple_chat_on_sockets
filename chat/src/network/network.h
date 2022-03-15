@@ -24,7 +24,7 @@ private:
 	SOCKET m_Socket;
 	std::map<int, client_receive_data_thread> m_ClientsList;
 	int m_iConnectionCount;
-	std::vector<net_packet*> m_PacketsList;
+	std::vector<net_packet> m_PacketsList;
 	HANDLE m_hThreadConnectionsHost;
 	bool m_bServerWasDowned;
 	f_ClientConnectionNotification m_pf_ClientConnectionNotificationCallback;
@@ -35,7 +35,7 @@ private:
 	bool InitializeAsClient();
 	void PacketsListCriticalSectionLock();
 	void PacketsListCriticalSectionUnlock();
-	void AddToPacketList(net_packet* pNetPacket);
+	void AddToPacketList(net_packet NetPacket);
 	bool InvokeClientConnectionNotification(bool bIsPreConnectionStep, int iConnectionCount, int iIP, char* szIP, int iPort);
 	bool InvokeClientDisconnectionNotification(int iConnectionCount);
 	bool SendToSocket(SOCKET Socket, void* pPacket, int iSize);

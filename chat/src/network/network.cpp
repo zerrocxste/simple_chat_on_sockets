@@ -133,15 +133,12 @@ bool CNetwork::ReceivePacket(net_packet* pPacket)
 	if (!this->m_PacketsList.empty())
 	{
 		auto it = this->m_PacketsList.begin();
-		auto NetPacket = *it;
+		auto& NetPacket = *it;
 
-		if (NetPacket)
-		{
-			*pPacket = *NetPacket;
-			ret = true;
-		}
-
+		*pPacket = NetPacket;
 		this->m_PacketsList.erase(it);
+
+		ret = true;
 	}
 
 	PacketsListCriticalSectionUnlock();
@@ -170,7 +167,7 @@ bool CNetwork::Startup()
 
 	if (WSAStartup(MAKEWORD(2, 1), &this->m_WSAdata) != 0)
 	{
-		MessageBox(NULL, "WSAStartup error", "", MB_OK | MB_ICONERROR);
+		MessageBox(0, "WSAStartup error", "", MB_OK | MB_ICONERROR);
 		return false;
 	}
 
@@ -178,7 +175,7 @@ bool CNetwork::Startup()
 	this->m_SockAddrIn.sin_port = htons(this->m_IPort);
 	this->m_SockAddrIn.sin_family = AF_INET;
 
-	this->m_Socket = socket(AF_INET, SOCK_STREAM, NULL);
+	this->m_Socket = socket(AF_INET, SOCK_STREAM, 0);
 
 	if (this->m_bIsHost)
 		this->m_bIsInitialized = InitializeAsHost();
@@ -261,9 +258,9 @@ bool CNetwork::InitializeAsHost()
 				{
 					int DataSize = 0;
 
-					auto recv_ret = recv(Client->m_ConnectionSocket, (char*)&DataSize, _this->GetPacketInfoLength(), NULL);
+					auto recv_ret = recv(Client->m_ConnectionSocket, (char*)&DataSize, _this->GetPacketInfoLength(), 0);
 
-					if (recv_ret)
+					if (recv_ret > 0)
 					{
 						if (recv_ret == _this->GetPacketInfoLength() && DataSize > 0)
 						{
@@ -276,9 +273,9 @@ bool CNetwork::InitializeAsHost()
 								continue;
 							}
 
-							recv(Client->m_ConnectionSocket, (char*)pData, DataSize, NULL);
+							recv(Client->m_ConnectionSocket, (char*)pData, DataSize, 0);
 
-							_this->AddToPacketList(new net_packet(pData, DataSize, ConnectionID));
+							_this->AddToPacketList(net_packet(pData, DataSize, ConnectionID));
 						}
 					}
 					else
@@ -327,7 +324,7 @@ bool CNetwork::InitializeAsClient()
 
 	if (Connection != 0)
 	{
-		MessageBox(NULL, "Connection to host failed", "", MB_OK | MB_ICONERROR);
+		MessageBox(0, "Connection to host failed", "", MB_OK | MB_ICONERROR);
 		return false;
 	}
 
@@ -340,9 +337,9 @@ bool CNetwork::InitializeAsClient()
 		{
 			int DataSize = 0;
 
-			auto recv_ret = recv(Client->m_ConnectionSocket, (char*)&DataSize, _this->GetPacketInfoLength(), NULL);
+			auto recv_ret = recv(Client->m_ConnectionSocket, (char*)&DataSize, _this->GetPacketInfoLength(), 0);
 
-			if (recv_ret)
+			if (recv_ret > 0)
 			{
 				if (recv_ret == _this->GetPacketInfoLength() && DataSize > 0)
 				{
@@ -355,9 +352,9 @@ bool CNetwork::InitializeAsClient()
 						continue;
 					}
 
-					recv(Client->m_ConnectionSocket, (char*)pData, DataSize, NULL);
+					recv(Client->m_ConnectionSocket, (char*)pData, DataSize, 0);
 
-					_this->AddToPacketList(new net_packet(pData, DataSize, 0));
+					_this->AddToPacketList(net_packet(pData, DataSize, 0));
 				}
 			}
 			else
@@ -391,11 +388,11 @@ void CNetwork::PacketsListCriticalSectionUnlock()
 	this->m_mtxExchangePacketsData.unlock();
 }
 
-void CNetwork::AddToPacketList(net_packet* pNetPacket)
+void CNetwork::AddToPacketList(net_packet NetPacket)
 {
 	PacketsListCriticalSectionLock();
 
-	this->m_PacketsList.push_back(pNetPacket);
+	this->m_PacketsList.push_back(NetPacket);
 
 	PacketsListCriticalSectionUnlock();
 }

@@ -66,7 +66,7 @@ bool CNetworkChatManager::Initialize()
 
 	if (!this->m_bIsInitialized)
 	{
-		MessageBox(NULL, "m_pNetwork->Startup failed", "", MB_OK | MB_ICONERROR);
+		MessageBox(0, "m_pNetwork->Startup failed", "", MB_OK | MB_ICONERROR);
 		return false;
 	}
 
@@ -257,7 +257,7 @@ void CNetworkChatManager::ReceivePacketsRoutine()
 		for (auto i = 0; i < iArraySize; i++)
 		{
 			auto iMessageID = PacketReadInteger(pData, &iReadCount);
-			TRACE("%d", iMessageID);
+			TRACE("%d ", iMessageID);
 			GetChatData()->DeleteMessage(iMessageID);
 		}
 
