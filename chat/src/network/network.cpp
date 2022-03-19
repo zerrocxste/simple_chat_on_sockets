@@ -32,7 +32,7 @@ bool CNetwork::SendToSocket(SOCKET Socket, void* pPacket, int iSize)
 
 	int iPacketSize = iSize;
 
-	if (send(Socket, (const char*)&iPacketSize, GetPacketInfoLength(), 0) == GetPacketInfoLength())
+	if (send(Socket, (const char*)&iPacketSize, CNetwork::iPacketInfoLength, 0) == CNetwork::iPacketInfoLength)
 	{
 		if (send(Socket, (const char*)pPacket, iSize, 0) == iSize)
 			ret = true;
@@ -258,11 +258,11 @@ bool CNetwork::InitializeAsHost()
 				{
 					int DataSize = 0;
 
-					auto recv_ret = recv(Client->m_ConnectionSocket, (char*)&DataSize, _this->GetPacketInfoLength(), 0);
+					auto recv_ret = recv(Client->m_ConnectionSocket, (char*)&DataSize, CNetwork::iPacketInfoLength, 0);
 
 					if (recv_ret > 0)
 					{
-						if (recv_ret == _this->GetPacketInfoLength() && DataSize > 0)
+						if (recv_ret == CNetwork::iPacketInfoLength && DataSize > 0)
 						{
 							TRACE_FUNC("Received data at clientid: %d, DataSize: %d\n", ConnectionID, DataSize);
 
@@ -337,11 +337,11 @@ bool CNetwork::InitializeAsClient()
 		{
 			int DataSize = 0;
 
-			auto recv_ret = recv(Client->m_ConnectionSocket, (char*)&DataSize, _this->GetPacketInfoLength(), 0);
+			auto recv_ret = recv(Client->m_ConnectionSocket, (char*)&DataSize, CNetwork::iPacketInfoLength, 0);
 
 			if (recv_ret > 0)
 			{
-				if (recv_ret == _this->GetPacketInfoLength() && DataSize > 0)
+				if (recv_ret == CNetwork::iPacketInfoLength && DataSize > 0)
 				{
 					TRACE_FUNC("Received data from host, size: %d\n", DataSize);
 
@@ -551,9 +551,4 @@ bool CNetwork::IntegerIpToStr(int iIP, char* szIP)
 	sprintf(szIP, "%d.%d.%d.%d\0", pIP[0], pIP[1], pIP[2], pIP[3]);
 
 	return true;
-}
-
-int CNetwork::GetPacketInfoLength()
-{
-	return sizeof(int);
 }

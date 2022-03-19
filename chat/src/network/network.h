@@ -43,8 +43,9 @@ private:
 	void DropConnections();
 	void DisconnectSocket(SOCKET Socket);
 	void DisconnectClient(client_receive_data_thread* Client);
-	int GetPacketInfoLength();
 public:
+	static const int iPacketInfoLength = sizeof(int);
+
 	CNetwork(bool IsHost, char* pszIP, int iPort, int iMaxProcessedUsersNumber);
 	~CNetwork();
 	
