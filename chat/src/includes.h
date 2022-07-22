@@ -57,6 +57,7 @@
 #include "defines.h"
 #include "structures/structures.h"
 
+#include "ierror/ierror.h"
 #include "window/window.h"
 #include "chat_data/chat_data.h"
 #include "network/network.h"

@@ -6,6 +6,7 @@ constexpr auto ADMIN_REQUEST_MSG = "ADMIN_REQUEST_MSG";
 constexpr auto ADMIN_STATUS_MSG = "ADMIN_STATUS_MSG";
 constexpr auto CLIENT_CONNECTED_MSG = "CLIENT_CONNECTED_MSG";
 constexpr auto DELETE_CHAT_MSG = "DELETE_CHAT_MSG";
+constexpr auto ONLINE_LIST_MSG = "ONLINE_LIST_MSG";
 
 constexpr auto ADMIN_GRANTED = "Admin access granted!";
 constexpr auto ADMIN_NOT_GRANTED = "Login or password is incorrect";
@@ -265,6 +266,15 @@ void CNetworkChatManager::ReceivePacketsRoutine()
 
 		std::vector<int> vExcludeID{ ConnectionID };
 		GetNetwork()->SendPacketExcludeID(Packet.m_pPacket, DataSize, &vExcludeID);
+	}
+	else if (Msg == MSG_ONLINE_LIST)
+	{
+		if (IsHost())
+			return;
+
+		this->m_iUsersConnectedToHost = PacketReadInteger(pData, &iReadCount);
+
+		delete[] pData;
 	}
 	else
 	{
@@ -539,31 +549,7 @@ bool CNetworkChatManager::SendNetMsg(MSG_TYPE MsgType, char* szMessage, int iMes
 	if (szMessage == nullptr || iMessageSize < 1)
 		return false;
 
-	char* szMsgType = nullptr;
-
-	switch (MsgType)
-	{
-	case MSG_SEND_CHAT_TO_HOST:
-		szMsgType = (char*)SEND_CHAT_TO_HOST_MSG;
-		break;
-	case MSG_SEND_CHAT_TO_CLIENT:
-		szMsgType = (char*)SEND_CHAT_TO_CLIENT_MSG;
-		break;
-	case MSG_ADMIN_REQUEST:
-		szMsgType = (char*)ADMIN_REQUEST_MSG;
-		break;
-	case MSG_ADMIN_STATUS:
-		szMsgType = (char*)ADMIN_STATUS_MSG;
-		break;
-	case MSG_CONNECTED:
-		szMsgType = (char*)CLIENT_CONNECTED_MSG;
-		break;
-	case MSG_DELETE:
-		szMsgType = (char*)DELETE_CHAT_MSG;
-		break;
-	default:
-		return false;
-	}
+	char* szMsgType = (char*)GetStrMsgType(MsgType);
 
 	if (!szMsgType)
 		return false;
@@ -632,8 +618,33 @@ MSG_TYPE CNetworkChatManager::GetMsgType(char* szMsg)
 		ret = MSG_CONNECTED;
 	else if (!strcmp(szMsg, DELETE_CHAT_MSG))
 		ret = MSG_DELETE;
+	else if (!strcmp(szMsg, ONLINE_LIST_MSG))
+		ret = MSG_ONLINE_LIST;
 
 	return ret;
+}
+
+const char* CNetworkChatManager::GetStrMsgType(MSG_TYPE MsgType)
+{
+	switch (MsgType)
+	{
+	case MSG_SEND_CHAT_TO_HOST:
+		return SEND_CHAT_TO_HOST_MSG;
+	case MSG_SEND_CHAT_TO_CLIENT:
+		return SEND_CHAT_TO_CLIENT_MSG;
+	case MSG_ADMIN_REQUEST:
+		return ADMIN_REQUEST_MSG;
+	case MSG_ADMIN_STATUS:
+		return ADMIN_STATUS_MSG;
+	case MSG_CONNECTED:
+		return CLIENT_CONNECTED_MSG;
+	case MSG_DELETE:
+		return DELETE_CHAT_MSG;
+	case MSG_ONLINE_LIST:
+		return ONLINE_LIST_MSG;
+	default:
+		return nullptr;
+	}
 }
 
 bool CNetworkChatManager::GrantAdmin(char* szLogin, char* szPassword, int iConnectionID)
@@ -711,6 +722,27 @@ void CNetworkChatManager::ResendLastMessagesToClient(int ID, int iNumberToResend
 bool CNetworkChatManager::IsAdmin()
 {
 	return this->m_bIsAdmin;
+}
+
+int CNetworkChatManager::GetActiveUsers()
+{
+	if (IsHost())
+		return this->m_pNetwork->GetConnectedUsersCount();
+	
+	return this->m_iUsersConnectedToHost;
+}
+
+void CNetworkChatManager::SendActiveUsersToClients()
+{
+	if (!IsHost())
+		return;
+
+	char Packet[4]{};
+
+	int iWriteCount = 0;
+	PacketWriteInteger(&Packet[0], &iWriteCount, GetActiveUsers());
+
+	SendNetMsg(MSG_TYPE::MSG_ONLINE_LIST, &Packet[0], iWriteCount);
 }
 
 CNetwork* CNetworkChatManager::GetNetwork()

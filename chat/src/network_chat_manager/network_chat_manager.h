@@ -6,7 +6,8 @@ enum MSG_TYPE
 	MSG_ADMIN_REQUEST,
 	MSG_ADMIN_STATUS,
 	MSG_CONNECTED,
-	MSG_DELETE
+	MSG_DELETE,
+	MSG_ONLINE_LIST
 };
 
 class CNetworkChatManager
@@ -29,12 +30,15 @@ public:
 	bool SendConnectedMessage(int ID = 0);
 	bool DeleteChatMessage(std::vector<int>* MsgsList);
 	bool IsAdmin();
+	int GetActiveUsers();
+	void SendActiveUsersToClients();
 	CChatData* GetChatData();
 private:
 	bool m_bIsInitialized;
 	bool m_bIsHost;
 	bool m_bIsAdmin;
 	bool m_bNeedExit;
+	int m_iUsersConnectedToHost;
 	int m_iMaxProcessedUsersNumber;
 	int m_iMessageCount;
 	CNetwork* m_pNetwork;
@@ -60,6 +64,7 @@ private:
 	bool SendNetMsg(MSG_TYPE MsgType, char* szAuthor, int iMessageSize, std::vector<int>* IDList = nullptr);
 	bool SendLocalMsg(char* szAuthor, char* szMessage, int iMessageID);
 	MSG_TYPE GetMsgType(char* szMsg);
+	const char* GetStrMsgType(MSG_TYPE MsgType);
 	bool GrantAdmin(char* szLogin, char* szPassword, int iConnectionID);
 	bool SendStatusAdmin(int ID, bool IsGranted);
 	CNetwork* GetNetwork();

@@ -1,6 +1,43 @@
 #include "../includes.h"
 
+#ifdef _WIN32
+int CNetwork::g_iCreatedLinkCount = 0;
+WSADATA CNetwork::g_WSAdata{};
+
+__forceinline bool CNetwork::CreateWSA()
+{
+	if (CNetwork::g_iCreatedLinkCount++ == 0)
+	{
+		memset(&this->g_WSAdata, 0, sizeof(WSADATA));
+
+		if (WSAStartup(MAKEWORD(2, 1), &CNetwork::g_WSAdata) != 0)
+		{
+			this->SetError(__FUNCTION__ " > WSAStartup error. WSAGetLastError: %d", WSAGetLastError());
+			return false;
+		}
+	}
+
+	return true;
+}
+#endif
+
+bool CNetwork::ThreadCreate(void* pfunc, void* arg)
+{
+#ifdef _WIN32
+	auto h = CreateThread(nullptr, 0, (LPTHREAD_START_ROUTINE)pfunc, arg, 0, nullptr);
+	
+	if (!h)
+		return false;
+
+	CloseHandle(h);
+#else
+	//?
+#endif
+	return true;
+}
+
 CNetwork::CNetwork(bool IsHost, char* pszIP, int iPort, int iMaxProcessedUsersNumber) :
+	IError(),
 	m_bIsInitialized(false),
 	m_bIsHost(IsHost),
 	m_iMaxProcessedUsersNumber(iMaxProcessedUsersNumber),
@@ -8,12 +45,10 @@ CNetwork::CNetwork(bool IsHost, char* pszIP, int iPort, int iMaxProcessedUsersNu
 	m_IPort(iPort),
 	m_Socket(0),
 	m_bServerWasDowned(false),
-	m_iConnectionCount(0),
-	m_hThreadConnectionsHost(0)
+	m_iConnectionCount(0)
 {
 	TRACE_FUNC("Contructor called\n");
 
-	memset(&this->m_WSAdata, 0, sizeof(WSADATA));
 	memset(&this->m_SockAddrIn, 0, sizeof(SOCKADDR_IN));
 }
 
@@ -22,8 +57,15 @@ CNetwork::~CNetwork()
 	TRACE_FUNC("Destructor called\n");
 
 	closesocket(this->m_Socket);
+	this->m_Socket = 0;
 	DropConnections();
-	WSACleanup();
+
+#ifdef _WIN32
+	CNetwork::g_iCreatedLinkCount--;
+
+	if (CNetwork::g_iCreatedLinkCount == 0)
+		WSACleanup();
+#endif // _WIN32
 }
 
 bool CNetwork::SendToSocket(SOCKET Socket, void* pPacket, int iSize)
@@ -165,11 +207,10 @@ bool CNetwork::Startup()
 	if (m_bIsInitialized)
 		return true;
 
-	if (WSAStartup(MAKEWORD(2, 1), &this->m_WSAdata) != 0)
-	{
-		MessageBox(0, "WSAStartup error", "", MB_OK | MB_ICONERROR);
+#ifdef _WIN32
+	if (!CreateWSA())
 		return false;
-	}
+#endif // _WIN32
 
 	this->m_SockAddrIn.sin_addr.S_un.S_addr = inet_addr(this->m_pszIP);
 	this->m_SockAddrIn.sin_port = htons(this->m_IPort);
@@ -185,137 +226,184 @@ bool CNetwork::Startup()
 	return this->m_bIsInitialized;
 }
 
+void CNetwork::thHostClientReceive(void* arg)
+{
+	auto HostReceiveThreadArg = (host_receive_thread_arg*)arg;
+	auto _this = HostReceiveThreadArg->m_Network;
+	auto Client = HostReceiveThreadArg->m_CurrentClient;
+
+	auto ConnectionID = Client->m_iThreadId;
+
+	while (true)
+	{
+		int DataSize = 0;
+
+		auto recv_ret = recv(Client->m_ConnectionSocket, (char*)&DataSize, CNetwork::iPacketInfoLength, 0);
+
+		if (recv_ret > 0)
+		{
+			if (recv_ret == CNetwork::iPacketInfoLength && DataSize > 0)
+			{
+				TRACE_FUNC("Received data at clientid: %d, DataSize: %d\n", ConnectionID, DataSize);
+
+				auto pData = malloc(DataSize);
+				if (!pData)
+				{
+					TRACE_FUNC("Failed to allocate memory, DataSize: %d\n", DataSize);
+					continue;
+				}
+
+				recv(Client->m_ConnectionSocket, (char*)pData, DataSize, 0);
+
+				_this->AddToPacketList(net_packet(pData, DataSize, ConnectionID));
+			}
+		}
+		else
+		{
+			TRACE_FUNC("Dropped connection at clientid: %d\n", ConnectionID);
+			_this->InvokeClientDisconnectionNotification(ConnectionID);
+			_this->DisconnectClient(Client);
+			break;
+		}
+
+		std::this_thread::sleep_for(std::chrono::milliseconds(1));
+	}
+
+	TRACE_FUNC("Exit receive thread clientid: %d\n", ConnectionID);
+}
+
+void CNetwork::thHostClientsHandling(void* arg)
+{
+	auto _this = (CNetwork*)arg;
+
+	while (true)
+	{
+		SOCKADDR_IN SockAddrIn{};
+
+		auto Connection = accept(_this->m_Socket, (sockaddr*)&SockAddrIn, &_this->m_iSockAddrInLength);
+
+		if (Connection == INVALID_SOCKET)
+		{
+#ifdef _WIN32
+			auto LastError = WSAGetLastError();
+
+			if (LastError == WSAEWOULDBLOCK ||
+				LastError == WSAEOPNOTSUPP ||
+				LastError == WSAECONNRESET)
+			{
+				TRACE_FUNC("Failed to client connection at: %d, Error code: %d\n", (int)_this->m_ClientsList.size(), LastError);
+				continue;
+			}
+
+			TRACE_FUNC("Shutdown client connection handler thread WSAErrorcode: %d\n", LastError);
+			break;
+#else
+			if (!_this->m_Socket)
+			{
+				TRACE_FUNC("Shutdown client connection handler thread\n");
+				break;
+			}
+	
+			TRACE_FUNC("Failed to client connection at: %d\n", (int)_this->m_ClientsList.size());
+			continue;
+#endif // _WIN32
+		}
+
+		auto iIP = _this->GetIntegerIpFromSockAddrIn(&SockAddrIn);
+		auto szIP = _this->GetStrIpFromSockAddrIn(&SockAddrIn);
+		auto iPort = _this->GetPortFromSockAddrIn(&SockAddrIn);
+
+		TRACE_FUNC("Await new connection: %s:%d\n", szIP, iPort);
+
+		if (!_this->InvokeClientConnectionNotification(true, _this->m_iConnectionCount, iIP, szIP, iPort))
+		{
+			TRACE_FUNC("Aborted connection by host user clientid: %d\n", (int)_this->m_ClientsList.size());
+			_this->DisconnectSocket(Connection);
+			continue;
+		}
+
+		TRACE_FUNC("Connected clientid: %d\n", (int)_this->m_ClientsList.size());
+
+		auto& Client = _this->m_ClientsList[_this->m_iConnectionCount];
+		Client.m_ConnectionSocket = Connection;
+		host_receive_thread_arg	HostReceiveThreadArg{};
+		HostReceiveThreadArg.m_Network = _this;
+		HostReceiveThreadArg.m_CurrentClient = &Client;
+		CNetwork::ThreadCreate(&CNetwork::thHostClientReceive, &HostReceiveThreadArg);
+		Client.m_iThreadId = _this->m_iConnectionCount;
+		Client.m_SockAddrIn = SockAddrIn;
+
+		_this->InvokeClientConnectionNotification(false, _this->m_iConnectionCount, iIP, szIP, iPort);
+
+		_this->m_iConnectionCount++;
+	}
+}
+
 bool CNetwork::InitializeAsHost()
 {
 	if (bind(this->m_Socket, (sockaddr*)&this->m_SockAddrIn, this->m_iSockAddrInLength) == SOCKET_ERROR)
 	{
-		TRACE_FUNC("Socket bind failed WSAGetLastError: %d\n", WSAGetLastError());
+#ifdef _WIN32
+		this->SetError(__FUNCTION__ " > Socket bind failed. WSAGetLastError: %d", WSAGetLastError());
+#else
+		this->SetError(__FUNCTION__ " > Socket bind failed");
+#endif // _WIN32
 		return false;
 	}
 
 	if (listen(this->m_Socket, SOMAXCONN) == SOCKET_ERROR)
 	{
-		TRACE_FUNC("Listen failed WSAGetLastError: %d\n", WSAGetLastError());
+#ifdef _WIN32
+		this->SetError(__FUNCTION__ " > Listen failed. WSAGetLastError: %d", WSAGetLastError());
+#else
+		this->SetError(__FUNCTION__ " > Listen failed");
+#endif // _WIN32
 		return false;
 	}
 
-	this->m_hThreadConnectionsHost = CreateThread(nullptr, 0, (LPTHREAD_START_ROUTINE)[](void* arg) -> DWORD {
+	CNetwork::ThreadCreate(&CNetwork::thHostClientsHandling, this);
 
-		auto _this = (CNetwork*)arg;
+	return true;
+}
 
-		while (true)
+void CNetwork::thClientHostReceive(void* arg)
+{
+	auto _this = (CNetwork*)arg;
+	auto Client = &_this->m_ClientsList[CLIENT_SOCKET];
+
+	while (true)
+	{
+		int DataSize = 0;
+
+		auto recv_ret = recv(Client->m_ConnectionSocket, (char*)&DataSize, CNetwork::iPacketInfoLength, 0);
+
+		if (recv_ret > 0)
 		{
-			SOCKADDR_IN SockAddrIn{};
-
-			auto Connection = accept(_this->m_Socket, (sockaddr*)&SockAddrIn, &_this->m_iSockAddrInLength);
-
-			if (Connection == INVALID_SOCKET)
+			if (recv_ret == CNetwork::iPacketInfoLength && DataSize > 0)
 			{
-				auto LastError = WSAGetLastError();
+				TRACE_FUNC("Received data from host, size: %d\n", DataSize);
 
-				if (LastError == WSAEWOULDBLOCK ||
-					LastError == WSAEOPNOTSUPP ||
-					LastError == WSAECONNRESET)
+				auto pData = malloc(DataSize);
+				if (!pData)
 				{
-					TRACE_FUNC("Failed to client connection at: %d, Error code: %d\n", (int)_this->m_ClientsList.size(), LastError);
+					TRACE_FUNC("Failed to allocate memory, DataSize: %d\n", DataSize);
 					continue;
 				}
 
-				TRACE_FUNC("Shutdown client connection handler thread WSAErrorcode: %d\n", LastError);
-				break;
+				recv(Client->m_ConnectionSocket, (char*)pData, DataSize, 0);
+
+				_this->AddToPacketList(net_packet(pData, DataSize, 0));
 			}
-
-			auto iIP = _this->GetIntegerIpFromSockAddrIn(&SockAddrIn);
-			auto szIP = _this->GetStrIpFromSockAddrIn(&SockAddrIn);
-			auto iPort = _this->GetPortFromSockAddrIn(&SockAddrIn);
-
-			TRACE_FUNC("Await new connection: %s:%d\n", szIP, iPort);
-
-			if (!_this->InvokeClientConnectionNotification(true, _this->m_iConnectionCount, iIP, szIP, iPort))
-			{
-				TRACE_FUNC("Aborted connection by host user clientid: %d\n", (int)_this->m_ClientsList.size());
-				_this->DisconnectSocket(Connection);
-				continue;
-			}
-
-			TRACE_FUNC("Connected clientid: %d\n", (int)_this->m_ClientsList.size());
-
-			struct host_receive_thread_arg
-			{
-				CNetwork* m_Network;
-				client_receive_data_thread* m_CurrentClient;
-			};
-
-			auto ReceiveThread = [](void* arg) -> DWORD
-			{
-				auto HostReceiveThreadArg = (host_receive_thread_arg*)arg;
-				auto _this = HostReceiveThreadArg->m_Network;
-				auto Client = HostReceiveThreadArg->m_CurrentClient;
-
-				auto ConnectionID = Client->m_iThreadId;
-
-				while (true)
-				{
-					int DataSize = 0;
-
-					auto recv_ret = recv(Client->m_ConnectionSocket, (char*)&DataSize, CNetwork::iPacketInfoLength, 0);
-
-					if (recv_ret > 0)
-					{
-						if (recv_ret == CNetwork::iPacketInfoLength && DataSize > 0)
-						{
-							TRACE_FUNC("Received data at clientid: %d, DataSize: %d\n", ConnectionID, DataSize);
-
-							auto pData = malloc(DataSize);
-							if (!pData)
-							{
-								TRACE_FUNC("Failed to allocate memory, DataSize: %d\n", DataSize);
-								continue;
-							}
-
-							recv(Client->m_ConnectionSocket, (char*)pData, DataSize, 0);
-
-							_this->AddToPacketList(net_packet(pData, DataSize, ConnectionID));
-						}
-					}
-					else
-					{
-						TRACE_FUNC("Dropped connection at clientid: %d\n", ConnectionID);
-						_this->InvokeClientDisconnectionNotification(ConnectionID);
-						_this->DisconnectClient(Client);
-						break;
-					}
-
-					std::this_thread::sleep_for(std::chrono::milliseconds(1));
-				}
-
-				TRACE_FUNC("Exit receive thread clientid: %d\n", ConnectionID);
-
-				return 0;
-			};
-
-			auto& Client = _this->m_ClientsList[_this->m_iConnectionCount];
-			Client.m_ConnectionSocket = Connection;
-			host_receive_thread_arg	HostReceiveThreadArg{};
-			HostReceiveThreadArg.m_Network = _this;
-			HostReceiveThreadArg.m_CurrentClient = &Client;
-			Client.m_ThreadHandle = CreateThread(nullptr, 0, (LPTHREAD_START_ROUTINE)ReceiveThread, &HostReceiveThreadArg, 0, nullptr);
-			Client.m_iThreadId = _this->m_iConnectionCount;
-			Client.m_SockAddrIn = SockAddrIn;
-
-			_this->InvokeClientConnectionNotification(false, _this->m_iConnectionCount, iIP, szIP, iPort);
-
-			_this->m_iConnectionCount++;
+		}
+		else
+		{
+			TRACE_FUNC("Host was closed\n");
+			_this->m_bServerWasDowned = true;
+			break;
 		}
 
-		return 0;
-
-		}, this, 0, nullptr);
-
-	if (!m_hThreadConnectionsHost)
-		return false;
-
-	return true;
+		std::this_thread::sleep_for(std::chrono::milliseconds(1));
+	}
 }
 
 bool CNetwork::InitializeAsClient()
@@ -324,55 +412,17 @@ bool CNetwork::InitializeAsClient()
 
 	if (Connection != 0)
 	{
-		MessageBox(0, "Connection to host failed", "", MB_OK | MB_ICONERROR);
+#ifdef _WIN32
+		this->SetError(__FUNCTION__ " > Connection to host failed. WSAGetLastError: %d", WSAGetLastError());
+#else
+		this->SetError(__FUNCTION__ " > Connection to host failed");
+#endif // _WIN32
 		return false;
 	}
 
-	auto ReceiveThread = [](void* arg) -> DWORD
-	{
-		auto _this = (CNetwork*)arg;
-		auto Client = &_this->m_ClientsList[CLIENT_SOCKET];
-
-		while (true)
-		{
-			int DataSize = 0;
-
-			auto recv_ret = recv(Client->m_ConnectionSocket, (char*)&DataSize, CNetwork::iPacketInfoLength, 0);
-
-			if (recv_ret > 0)
-			{
-				if (recv_ret == CNetwork::iPacketInfoLength && DataSize > 0)
-				{
-					TRACE_FUNC("Received data from host, size: %d\n", DataSize);
-
-					auto pData = malloc(DataSize);
-					if (!pData)
-					{
-						TRACE_FUNC("Failed to allocate memory, DataSize: %d\n", DataSize);
-						continue;
-					}
-
-					recv(Client->m_ConnectionSocket, (char*)pData, DataSize, 0);
-
-					_this->AddToPacketList(net_packet(pData, DataSize, 0));
-				}
-			}
-			else
-			{
-				TRACE_FUNC("Host was closed\n");
-				_this->m_bServerWasDowned = true;
-				break;
-			}
-
-			std::this_thread::sleep_for(std::chrono::milliseconds(1));
-		}
-
-		return 0;
-	};
-
 	auto& Client = this->m_ClientsList[CLIENT_SOCKET];
 	Client.m_ConnectionSocket = this->m_Socket;
-	Client.m_ThreadHandle = CreateThread(nullptr, 0, (LPTHREAD_START_ROUTINE)ReceiveThread, this, 0, nullptr);
+	CNetwork::ThreadCreate(&CNetwork::thClientHostReceive, this);
 	Client.m_iThreadId = CLIENT_SOCKET;
 
 	return true;

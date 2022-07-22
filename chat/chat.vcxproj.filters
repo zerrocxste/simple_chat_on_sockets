@@ -43,6 +43,9 @@
     <Filter Include="libs\DXWF\x64">
       <UniqueIdentifier>{5850a930-95ae-44fd-9cad-12a2e08e9ce7}</UniqueIdentifier>
     </Filter>
+    <Filter Include="src\ierror">
+      <UniqueIdentifier>{07697423-c6e6-4a0f-8442-b4514f20c885}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\main.cpp">
@@ -89,6 +92,9 @@
     </ClCompile>
     <ClCompile Include="src\network_chat_manager\network_chat_manager.cpp">
       <Filter>src\network_chat_manager</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ierror\ierror.cpp">
+      <Filter>src\ierror</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -151,6 +157,9 @@
     </ClInclude>
     <ClInclude Include="src\network_chat_manager\network_chat_manager.h">
       <Filter>src\network_chat_manager</Filter>
+    </ClInclude>
+    <ClInclude Include="src\ierror\ierror.h">
+      <Filter>src\ierror</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

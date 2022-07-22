@@ -30,6 +30,7 @@
     <ClCompile Include="src\chat_data\chat_data.cpp" />
     <ClCompile Include="src\globals\globals.cpp" />
     <ClCompile Include="src\gui\gui.cpp" />
+    <ClCompile Include="src\ierror\ierror.cpp" />
     <ClCompile Include="src\main.cpp" />
     <ClCompile Include="src\network\network.cpp" />
     <ClCompile Include="src\network_chat_manager\network_chat_manager.cpp" />
@@ -51,6 +52,7 @@
     <ClInclude Include="src\defines.h" />
     <ClInclude Include="src\globals\globals.h" />
     <ClInclude Include="src\gui\gui.h" />
+    <ClInclude Include="src\ierror\ierror.h" />
     <ClInclude Include="src\includes.h" />
     <ClInclude Include="src\network\network.h" />
     <ClInclude Include="src\network_chat_manager\network_chat_manager.h" />

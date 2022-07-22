@@ -87,8 +87,17 @@ void Chat::GuiPresents::GuiChat(bool* baBackButton)
 		NetworkShutdown();
 
 	auto szTitle = AppMode == HOST ? "Chat | Host mode" : "Chat";
-	Widgets::Title(szTitle);
-	ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 10.f);
+	auto PrevPos = Widgets::Title(szTitle);
+	auto CurrentPos = ImGui::GetCursorPos();
+
+	char buff[120]{};
+	sprintf_s(buff, "Online: %d", g_pNetworkChatManager->GetActiveUsers());
+	auto ContentAvail = ImGui::GetContentRegionAvail();
+	auto TestOnlineStatusSize = ImGui::CalcTextSize(buff);
+	ImGui::SetCursorPos(ImVec2(ContentAvail.x - TestOnlineStatusSize.x - 10.f, PrevPos.y));
+	ImGui::Text(buff);
+
+	ImGui::SetCursorPosY(CurrentPos.y + 10.f);
 
 	if (AppMode == CLIENT)
 	{
@@ -207,6 +216,8 @@ void Chat::GuiPresents::GuiChat(bool* baBackButton)
 			//ImGui::Text("[%d] %s: %s", message->m_iMessageID, message->m_szUsername, message->m_szMessage);
 			ImGui::Text("%s: %s", message->m_szUsername, message->m_szMessage);
 		}
+
+		g_pNetworkChatManager->SendActiveUsersToClients();
 
 		auto ContentRegionAvailHeight = fabs(ImGui::GetContentRegionAvail().y);
 
@@ -379,11 +390,14 @@ void Chat::GuiPresents::GuiAwaitInitialize(bool* baBackButton)
 	}
 }
 
-void Chat::GuiPresents::Widgets::Title(const char* szTitle)
+ImVec2 Chat::GuiPresents::Widgets::Title(const char* szTitle)
 {
 	auto vCursorPos = ImGui::GetCursorPos();
 	ImGui::SetCursorPos(ImVec2(vCursorPos.x + 5.f, vCursorPos.y + 20.f));
+	auto retCursorPos = ImGui::GetCursorPos();
 	ImGui::PushFont(Gui::fTitle);
 	ImGui::Text(szTitle);
 	ImGui::PopFont();
+	
+	return retCursorPos;
 }

@@ -4,7 +4,7 @@ namespace Chat
 	{
 		namespace Widgets
 		{
-			void Title(const char* szTitle);
+			ImVec2 Title(const char* szTitle);
 		}
 		void GuiChat(bool* baBackButton);
 		bool GuiSelectMode(bool* pbOutIsHost);
