@@ -1,5 +1,9 @@
 #include "../includes.h"
 
+#include "../update_every/update_every.h"
+
+std::unique_ptr<CNetworkChatManager> g_pNetworkChatManager;
+
 static APP_MODE AppMode = NOT_INITIALIZED;
 static GUI_MODE ChatModePage = SELECT_MODE;
 static bool bIsNextHost = false;
@@ -217,7 +221,13 @@ void Chat::GuiPresents::GuiChat(bool* baBackButton)
 			ImGui::Text("%s: %s", message->m_szUsername, message->m_szMessage);
 		}
 
-		g_pNetworkChatManager->SendActiveUsersToClients();
+		static CUpdateEvery g_UpdateActiveUsersEvery(100);
+
+		g_UpdateActiveUsersEvery.Update([]() -> void
+			{
+				g_pNetworkChatManager->SendActiveUsersToClients();
+			}
+		);
 
 		auto ContentRegionAvailHeight = fabs(ImGui::GetContentRegionAvail().y);
 

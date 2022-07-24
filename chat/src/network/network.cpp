@@ -447,20 +447,26 @@ void CNetwork::AddToPacketList(net_packet NetPacket)
 	PacketsListCriticalSectionUnlock();
 }
 
-bool CNetwork::AddClientsConnectionNotificationCallback(f_ClientConnectionNotification pf_NewClientsNotificationCallback)
+bool CNetwork::AddClientsConnectionNotificationCallback(f_ClientConnectionNotification pf_NewClientsNotificationCallback, NotificationCallbackUserDataPtr pUserData)
 {
 	if (!IsHost())
 		return false;
+
+	if (pUserData != nullptr)
+		this->m_pOnClientConnectionUserData = pUserData;
 
 	this->m_pf_ClientConnectionNotificationCallback = pf_NewClientsNotificationCallback;
 
 	return true;
 }
 
-bool CNetwork::AddClientsDisconnectionNotificationCallback(f_ClientDisconnectionNotification pf_ClientDisconnectionNotification)
+bool CNetwork::AddClientsDisconnectionNotificationCallback(f_ClientDisconnectionNotification pf_ClientDisconnectionNotification, NotificationCallbackUserDataPtr pUserData)
 {
 	if (!IsHost())
 		return false;
+
+	if (pUserData != nullptr)
+		this->m_pOnClientDisconnectionUserData = pUserData;
 
 	this->m_pf_ClientDisconnectionNotificationCallback = pf_ClientDisconnectionNotification;
 
@@ -472,7 +478,7 @@ bool CNetwork::InvokeClientConnectionNotification(bool bIsPreConnectionStep, int
 	if (!this->m_pf_ClientConnectionNotificationCallback)
 		return true;
 
-	return m_pf_ClientConnectionNotificationCallback(bIsPreConnectionStep, iConnectionCount, iIP, szIP, iPort);
+	return m_pf_ClientConnectionNotificationCallback(bIsPreConnectionStep, iConnectionCount, iIP, szIP, iPort, this->m_pOnClientConnectionUserData);
 }
 
 bool CNetwork::InvokeClientDisconnectionNotification(int iConnectionCount)
@@ -480,7 +486,7 @@ bool CNetwork::InvokeClientDisconnectionNotification(int iConnectionCount)
 	if (!this->m_pf_ClientDisconnectionNotificationCallback)
 		return true;
 
-	return m_pf_ClientDisconnectionNotificationCallback(iConnectionCount);
+	return m_pf_ClientDisconnectionNotificationCallback(iConnectionCount, this->m_pOnClientDisconnectionUserData);
 }
 
 bool CNetwork::GetReceivedData(net_packet* pPacket)

@@ -19,6 +19,13 @@ public:
 	bool Initialize();
 	void Shutdown();
 	void ReceivePacketsRoutine();
+	void ReceiveSendChatToHost(int& iReadCount, chat_user* User, int iConnectionID, char* pData, int iDataSize);
+	void ReceiveSendChatToClient(int& iReadCount, chat_user* User, int iConnectionID, char* pData, int iDataSize);
+	void ReceiveAdminRequest(int& iReadCount, chat_user* User, int iConnectionID, char* pData, int iDataSize);
+	void ReceiveAdminStatus(int& iReadCount, chat_user* User, int iConnectionID, char* pData, int iDataSize);
+	void ReceiveConnected(int& iReadCount, chat_user* User, int iConnectionID, char* pData, int iDataSize);
+	void ReceiveDelete(int& iReadCount, chat_user* User, int iConnectionID, char* pData, int iDataSize);
+	void ReceiveOnlineList(int& iReadCount, chat_user* User, int iConnectionID, char* pData, int iDataSize);
 	bool SendChatMessage(char* szMessage);
 	size_t GetChatArraySize();
 	bool IsNeedExit();
@@ -33,12 +40,16 @@ public:
 	int GetActiveUsers();
 	void SendActiveUsersToClients();
 	CChatData* GetChatData();
+
+	static bool OnConnectionNotification(bool bIsPreConnectionStep, int iConnectionCount, int iIp, char* szIP, int iPort, NotificationCallbackUserDataPtr pUserData);
+	static bool OnDisconnectionNotification(int iConnectionCount, NotificationCallbackUserDataPtr pUserData);
 private:
 	bool m_bIsInitialized;
 	bool m_bIsHost;
 	bool m_bIsAdmin;
 	bool m_bNeedExit;
 	int m_iUsersConnectedToHost;
+	int m_iUsersConnectedToHostPrevFrame;
 	int m_iMaxProcessedUsersNumber;
 	int m_iMessageCount;
 	CNetwork* m_pNetwork;

@@ -28,9 +28,6 @@
     <Filter Include="src\gui">
       <UniqueIdentifier>{d521200e-6150-466e-b168-f693d4743323}</UniqueIdentifier>
     </Filter>
-    <Filter Include="src\globals">
-      <UniqueIdentifier>{745ebabc-82f1-4600-bf92-2f917e8b9c5c}</UniqueIdentifier>
-    </Filter>
     <Filter Include="src\chat_data">
       <UniqueIdentifier>{5b3b1bdf-438b-476a-a520-a92b88971a02}</UniqueIdentifier>
     </Filter>
@@ -45,6 +42,9 @@
     </Filter>
     <Filter Include="src\ierror">
       <UniqueIdentifier>{07697423-c6e6-4a0f-8442-b4514f20c885}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\update_every">
+      <UniqueIdentifier>{6ce374f1-4463-4cca-ace4-8dda57c526a5}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -81,9 +81,6 @@
     <ClCompile Include="src\chat_data\chat_data.cpp">
       <Filter>src\chat_data</Filter>
     </ClCompile>
-    <ClCompile Include="src\globals\globals.cpp">
-      <Filter>src\globals</Filter>
-    </ClCompile>
     <ClCompile Include="src\network\network.cpp">
       <Filter>src\network</Filter>
     </ClCompile>
@@ -95,6 +92,9 @@
     </ClCompile>
     <ClCompile Include="src\ierror\ierror.cpp">
       <Filter>src\ierror</Filter>
+    </ClCompile>
+    <ClCompile Include="src\update_every\update_every.cpp">
+      <Filter>src\update_every</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -146,9 +146,6 @@
     <ClInclude Include="src\chat_data\chat_data.h">
       <Filter>src\chat_data</Filter>
     </ClInclude>
-    <ClInclude Include="src\globals\globals.h">
-      <Filter>src\globals</Filter>
-    </ClInclude>
     <ClInclude Include="src\network\network.h">
       <Filter>src\network</Filter>
     </ClInclude>
@@ -160,6 +157,9 @@
     </ClInclude>
     <ClInclude Include="src\ierror\ierror.h">
       <Filter>src\ierror</Filter>
+    </ClInclude>
+    <ClInclude Include="src\update_every\update_every.h">
+      <Filter>src\update_every</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

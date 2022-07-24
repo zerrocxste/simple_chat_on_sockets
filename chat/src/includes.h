@@ -34,7 +34,7 @@
 #pragma comment (lib, "d3d9.lib")
 
 #ifdef _USERDEBUG
-#define TRACE_FUNC(Text, ...) printf("[+] %s() -> " Text, __FUNCTION__, __VA_ARGS__)
+#define TRACE_FUNC(Text, ...) printf("[+] " __FUNCTION__ " > " Text, __VA_ARGS__)
 #define TRACE(Text, ...) printf(Text, __VA_ARGS__)
 #else
 #define TRACE_FUNC(Text, ...)
@@ -62,6 +62,5 @@
 #include "chat_data/chat_data.h"
 #include "network/network.h"
 #include "network_chat_manager/network_chat_manager.h"
-#include "globals/globals.h"
 #include "gui/gui.h"
 #include "chat/chat.h"
