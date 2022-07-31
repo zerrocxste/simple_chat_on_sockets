@@ -2,6 +2,8 @@
 
 #include "../update_every/update_every.h"
 
+constexpr auto MAX_PROCESSED_USERS_IN_CHAT = 10;
+
 std::unique_ptr<CNetworkChatManager> g_pNetworkChatManager;
 
 static APP_MODE AppMode = NOT_INITIALIZED;

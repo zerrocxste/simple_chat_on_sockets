@@ -1,3 +1,12 @@
+struct Message
+{
+	int m_iMessageID;
+	char* m_szUsername;
+	char* m_szMessage;
+};
+typedef Message* pMessage;
+typedef pMessage* ppArrayMessages;
+
 template <class T>
 class CIterator
 {

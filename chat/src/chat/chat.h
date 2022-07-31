@@ -1,3 +1,18 @@
+enum APP_MODE
+{
+	NOT_INITIALIZED,
+	PROCESS_INITIALIZING,
+	FAILED_INITIALIZING,
+	HOST,
+	CLIENT
+};
+
+enum GUI_MODE
+{
+	SELECT_MODE,
+	ENTER_USERNAME
+};
+
 namespace Chat
 {
 	namespace GuiPresents

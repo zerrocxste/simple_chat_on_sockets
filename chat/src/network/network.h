@@ -1,3 +1,28 @@
+constexpr auto CLIENT_SOCKET = 0;
+
+struct net_packet
+{
+	net_packet() :
+		m_pPacket(nullptr),
+		m_iSize(0),
+		m_iConnectionID(0)
+	{
+
+	};
+
+	net_packet(void* pPacket, int iSize, int iConnectionID) :
+		m_pPacket(pPacket),
+		m_iSize(iSize),
+		m_iConnectionID(iConnectionID)
+	{
+
+	}
+
+	void* m_pPacket;
+	int m_iSize;
+	int m_iConnectionID;
+};
+
 class CNetwork;
 
 using NotificationCallbackUserDataPtr = void*;
@@ -29,7 +54,11 @@ private:
 	__forceinline bool CreateWSA();
 #endif // _WIN32
 
-	static bool ThreadCreate(void* pfunc, void* arg);
+	template <class T> __forceinline static bool ThreadCreate(T* pfunc, void* arg) noexcept
+	{
+		std::thread(pfunc, arg).detach();
+		return true;
+	}
 
 	static void thHostClientReceive(void* arg);
 	static void thHostClientsHandling(void* arg);

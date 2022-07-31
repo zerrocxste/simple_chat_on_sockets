@@ -55,12 +55,10 @@
 #include "../libs/ImGui/imgui_impl_win32.h"
 
 #include "defines.h"
-#include "structures/structures.h"
 
 #include "ierror/ierror.h"
 #include "window/window.h"
-#include "chat_data/chat_data.h"
 #include "network/network.h"
-#include "network_chat_manager/network_chat_manager.h"
+#include "chat_common/chat_common.h"
 #include "gui/gui.h"
 #include "chat/chat.h"

@@ -21,23 +21,7 @@ __forceinline bool CNetwork::CreateWSA()
 }
 #endif
 
-bool CNetwork::ThreadCreate(void* pfunc, void* arg)
-{
-#ifdef _WIN32
-	auto h = CreateThread(nullptr, 0, (LPTHREAD_START_ROUTINE)pfunc, arg, 0, nullptr);
-	
-	if (!h)
-		return false;
-
-	CloseHandle(h);
-#else
-	//?
-#endif
-	return true;
-}
-
 CNetwork::CNetwork(bool IsHost, char* pszIP, int iPort, int iMaxProcessedUsersNumber) :
-	IError(),
 	m_bIsInitialized(false),
 	m_bIsHost(IsHost),
 	m_iMaxProcessedUsersNumber(iMaxProcessedUsersNumber),

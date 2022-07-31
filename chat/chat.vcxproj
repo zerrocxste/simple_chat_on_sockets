@@ -27,12 +27,12 @@
     <ClCompile Include="libs\ImGui\imgui_tables.cpp" />
     <ClCompile Include="libs\ImGui\imgui_widgets.cpp" />
     <ClCompile Include="src\chat\chat.cpp" />
-    <ClCompile Include="src\chat_data\chat_data.cpp" />
+    <ClCompile Include="src\chat_common\chat_data\chat_data.cpp" />
+    <ClCompile Include="src\chat_common\network_chat_manager\network_chat_manager.cpp" />
     <ClCompile Include="src\gui\gui.cpp" />
     <ClCompile Include="src\ierror\ierror.cpp" />
     <ClCompile Include="src\main.cpp" />
     <ClCompile Include="src\network\network.cpp" />
-    <ClCompile Include="src\network_chat_manager\network_chat_manager.cpp" />
     <ClCompile Include="src\update_every\update_every.cpp" />
     <ClCompile Include="src\window\window.cpp" />
   </ItemGroup>
@@ -48,14 +48,14 @@
     <ClInclude Include="libs\ImGui\imstb_textedit.h" />
     <ClInclude Include="libs\ImGui\imstb_truetype.h" />
     <ClInclude Include="src\chat\chat.h" />
-    <ClInclude Include="src\chat_data\chat_data.h" />
+    <ClInclude Include="src\chat_common\chat_common.h" />
+    <ClInclude Include="src\chat_common\chat_data\chat_data.h" />
+    <ClInclude Include="src\chat_common\network_chat_manager\network_chat_manager.h" />
     <ClInclude Include="src\defines.h" />
     <ClInclude Include="src\gui\gui.h" />
     <ClInclude Include="src\ierror\ierror.h" />
     <ClInclude Include="src\includes.h" />
     <ClInclude Include="src\network\network.h" />
-    <ClInclude Include="src\network_chat_manager\network_chat_manager.h" />
-    <ClInclude Include="src\structures\structures.h" />
     <ClInclude Include="src\update_every\update_every.h" />
     <ClInclude Include="src\window\window.h" />
   </ItemGroup>

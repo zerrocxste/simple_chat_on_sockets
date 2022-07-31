@@ -10,6 +10,15 @@ enum MSG_TYPE
 	MSG_ONLINE_LIST
 };
 
+struct chat_user
+{
+	bool m_bConnected;
+	int m_IP;
+	int m_iPort;
+	bool m_bIsAdmin;
+	char m_szUsername[MAX_USERNAME_SIZE];
+};
+
 class CNetworkChatManager
 {
 public:

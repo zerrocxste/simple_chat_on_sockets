@@ -1,4 +1,4 @@
-#include "../includes.h"
+#include "../../includes.h"
 
 constexpr auto SEND_CHAT_TO_HOST_MSG = "SEND_CHAT_TO_HOST_MSG";
 constexpr auto SEND_CHAT_TO_CLIENT_MSG = "SEND_CHAT_TO_CLIENT_MSG";
@@ -765,7 +765,7 @@ int CNetworkChatManager::GetActiveUsers()
 {
 	if (IsHost())
 		return this->m_pNetwork->GetConnectedUsersCount();
-	
+
 	return this->m_iUsersConnectedToHost;
 }
 

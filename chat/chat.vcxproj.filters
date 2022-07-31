@@ -16,20 +16,11 @@
     <Filter Include="src\window">
       <UniqueIdentifier>{8cfe89ac-cc9f-4c23-a88d-e6fb9be6ec35}</UniqueIdentifier>
     </Filter>
-    <Filter Include="src\structures">
-      <UniqueIdentifier>{40453fca-ed82-496e-97e8-d7f214b6591f}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="src\network_chat_manager">
-      <UniqueIdentifier>{63e9f797-610e-477f-b3f0-598a006ed34c}</UniqueIdentifier>
-    </Filter>
     <Filter Include="src\network">
       <UniqueIdentifier>{2c5edf69-efc7-4a36-abec-4e77a90145de}</UniqueIdentifier>
     </Filter>
     <Filter Include="src\gui">
       <UniqueIdentifier>{d521200e-6150-466e-b168-f693d4743323}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="src\chat_data">
-      <UniqueIdentifier>{5b3b1bdf-438b-476a-a520-a92b88971a02}</UniqueIdentifier>
     </Filter>
     <Filter Include="src\chat">
       <UniqueIdentifier>{4cac66b0-31c9-4190-8201-de3a8fa807bf}</UniqueIdentifier>
@@ -45,6 +36,15 @@
     </Filter>
     <Filter Include="src\update_every">
       <UniqueIdentifier>{6ce374f1-4463-4cca-ace4-8dda57c526a5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\chat_common">
+      <UniqueIdentifier>{319b496e-7630-47a0-a538-99577d2a0c28}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\chat_common\chat_data">
+      <UniqueIdentifier>{d10a6798-803f-4afc-997f-c6cf74ebab07}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\chat_common\network_chat_manager">
+      <UniqueIdentifier>{4fc42b98-8f4d-48d3-b35d-45b52f3604bb}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -78,23 +78,23 @@
     <ClCompile Include="src\chat\chat.cpp">
       <Filter>src\chat</Filter>
     </ClCompile>
-    <ClCompile Include="src\chat_data\chat_data.cpp">
-      <Filter>src\chat_data</Filter>
-    </ClCompile>
     <ClCompile Include="src\network\network.cpp">
       <Filter>src\network</Filter>
     </ClCompile>
     <ClCompile Include="src\gui\gui.cpp">
       <Filter>src\gui</Filter>
     </ClCompile>
-    <ClCompile Include="src\network_chat_manager\network_chat_manager.cpp">
-      <Filter>src\network_chat_manager</Filter>
-    </ClCompile>
     <ClCompile Include="src\ierror\ierror.cpp">
       <Filter>src\ierror</Filter>
     </ClCompile>
     <ClCompile Include="src\update_every\update_every.cpp">
       <Filter>src\update_every</Filter>
+    </ClCompile>
+    <ClCompile Include="src\chat_common\chat_data\chat_data.cpp">
+      <Filter>src\chat_common\chat_data</Filter>
+    </ClCompile>
+    <ClCompile Include="src\chat_common\network_chat_manager\network_chat_manager.cpp">
+      <Filter>src\chat_common\network_chat_manager</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -134,17 +134,11 @@
     <ClInclude Include="src\defines.h">
       <Filter>src</Filter>
     </ClInclude>
-    <ClInclude Include="src\structures\structures.h">
-      <Filter>src\structures</Filter>
-    </ClInclude>
     <ClInclude Include="src\window\window.h">
       <Filter>src\window</Filter>
     </ClInclude>
     <ClInclude Include="src\chat\chat.h">
       <Filter>src\chat</Filter>
-    </ClInclude>
-    <ClInclude Include="src\chat_data\chat_data.h">
-      <Filter>src\chat_data</Filter>
     </ClInclude>
     <ClInclude Include="src\network\network.h">
       <Filter>src\network</Filter>
@@ -152,14 +146,20 @@
     <ClInclude Include="src\gui\gui.h">
       <Filter>src\gui</Filter>
     </ClInclude>
-    <ClInclude Include="src\network_chat_manager\network_chat_manager.h">
-      <Filter>src\network_chat_manager</Filter>
-    </ClInclude>
     <ClInclude Include="src\ierror\ierror.h">
       <Filter>src\ierror</Filter>
     </ClInclude>
     <ClInclude Include="src\update_every\update_every.h">
       <Filter>src\update_every</Filter>
+    </ClInclude>
+    <ClInclude Include="src\chat_common\chat_common.h">
+      <Filter>src\chat_common</Filter>
+    </ClInclude>
+    <ClInclude Include="src\chat_common\chat_data\chat_data.h">
+      <Filter>src\chat_common\chat_data</Filter>
+    </ClInclude>
+    <ClInclude Include="src\chat_common\network_chat_manager\network_chat_manager.h">
+      <Filter>src\chat_common\network_chat_manager</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
