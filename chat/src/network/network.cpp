@@ -224,30 +224,28 @@ void CNetwork::thHostClientReceive(void* arg)
 
 		auto recv_ret = recv(Client->m_ConnectionSocket, (char*)&DataSize, CNetwork::iPacketInfoLength, 0);
 
-		if (recv_ret > 0)
-		{
-			if (recv_ret == CNetwork::iPacketInfoLength && DataSize > 0)
-			{
-				TRACE_FUNC("Received data at clientid: %d, DataSize: %d\n", ConnectionID, DataSize);
-
-				auto pData = malloc(DataSize);
-				if (!pData)
-				{
-					TRACE_FUNC("Failed to allocate memory, DataSize: %d\n", DataSize);
-					continue;
-				}
-
-				recv(Client->m_ConnectionSocket, (char*)pData, DataSize, 0);
-
-				_this->AddToPacketList(net_packet(pData, DataSize, ConnectionID));
-			}
-		}
-		else
+		if (recv_ret <= 0)
 		{
 			TRACE_FUNC("Dropped connection at clientid: %d\n", ConnectionID);
 			_this->InvokeClientDisconnectionNotification(ConnectionID);
 			_this->DisconnectClient(Client);
 			break;
+		}
+
+		if (recv_ret == CNetwork::iPacketInfoLength && DataSize > 0)
+		{
+			TRACE_FUNC("Received data at clientid: %d, DataSize: %d\n", ConnectionID, DataSize);
+
+			auto pData = malloc(DataSize);
+			if (!pData)
+			{
+				TRACE_FUNC("Failed to allocate memory, DataSize: %d\n", DataSize);
+				continue;
+			}
+
+			recv(Client->m_ConnectionSocket, (char*)pData, DataSize, 0);
+
+			_this->AddToPacketList(net_packet(pData, DataSize, ConnectionID));
 		}
 
 		std::this_thread::sleep_for(std::chrono::milliseconds(1));
@@ -361,29 +359,27 @@ void CNetwork::thClientHostReceive(void* arg)
 
 		auto recv_ret = recv(Client->m_ConnectionSocket, (char*)&DataSize, CNetwork::iPacketInfoLength, 0);
 
-		if (recv_ret > 0)
-		{
-			if (recv_ret == CNetwork::iPacketInfoLength && DataSize > 0)
-			{
-				TRACE_FUNC("Received data from host, size: %d\n", DataSize);
-
-				auto pData = malloc(DataSize);
-				if (!pData)
-				{
-					TRACE_FUNC("Failed to allocate memory, DataSize: %d\n", DataSize);
-					continue;
-				}
-
-				recv(Client->m_ConnectionSocket, (char*)pData, DataSize, 0);
-
-				_this->AddToPacketList(net_packet(pData, DataSize, 0));
-			}
-		}
-		else
+		if (recv_ret <= 0)
 		{
 			TRACE_FUNC("Host was closed\n");
 			_this->m_bServerWasDowned = true;
 			break;
+		}
+
+		if (recv_ret == CNetwork::iPacketInfoLength && DataSize > 0)
+		{
+			TRACE_FUNC("Received data from host, size: %d\n", DataSize);
+
+			auto pData = malloc(DataSize);
+			if (!pData)
+			{
+				TRACE_FUNC("Failed to allocate memory, DataSize: %d\n", DataSize);
+				continue;
+			}
+
+			recv(Client->m_ConnectionSocket, (char*)pData, DataSize, 0);
+
+			_this->AddToPacketList(net_packet(pData, DataSize, 0));
 		}
 
 		std::this_thread::sleep_for(std::chrono::milliseconds(1));
