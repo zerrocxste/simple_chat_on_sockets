@@ -105,66 +105,64 @@ void CNetworkChatManager::ReceivePacketsRoutine()
 
 	net_packet Packet;
 
-	auto HasData = GetNetwork()->GetReceivedData(&Packet);
-
-	if (!HasData)
-		return;
-
-	auto ConnectionID = Packet.m_iConnectionID;
-	auto pData = (char*)Packet.m_pPacket;
-	auto DataSize = Packet.m_iSize;
-
-	if (!DataSize)
-		return;
-
-	TRACE_FUNC("Packet.m_iConnectionID: %d, Packet.m_pPacket: %p, Packet.m_iSize: %d\n", ConnectionID, pData, DataSize);
-
-	int iReadCount = 0;
-
-	auto Msg = PacketReadMsgType(pData, &iReadCount);
-
-	auto iMsgLength = PacketReadInteger(pData, &iReadCount);
-
-	auto User = GetUser(ConnectionID);
-
-	if (IsHost())
+	while (GetNetwork()->GetReceivedData(&Packet))
 	{
-		if (!User->m_bConnected)
-		{
-			TRACE_FUNC("Client not connected. ID: %d\n", ConnectionID);
+		auto ConnectionID = Packet.m_iConnectionID;
+		auto pData = (char*)Packet.m_pPacket;
+		auto DataSize = Packet.m_iSize;
+
+		if (!DataSize)
 			return;
+
+		TRACE_FUNC("Packet.m_iConnectionID: %d, Packet.m_pPacket: %p, Packet.m_iSize: %d\n", ConnectionID, pData, DataSize);
+
+		int iReadCount = 0;
+
+		auto Msg = PacketReadMsgType(pData, &iReadCount);
+
+		auto iMsgLength = PacketReadInteger(pData, &iReadCount);
+
+		auto User = GetUser(ConnectionID);
+
+		if (IsHost())
+		{
+			if (!User->m_bConnected)
+			{
+				TRACE_FUNC("Client not connected. ID: %d\n", ConnectionID);
+				return;
+			}
 		}
-	}
 
-	switch (Msg)
-	{
-	case MSG_SEND_CHAT_TO_HOST:
-		ReceiveSendChatToHost(iReadCount, User, ConnectionID, pData, DataSize);
-		break;
-	case MSG_SEND_CHAT_TO_CLIENT:
-		ReceiveSendChatToClient(iReadCount, User, ConnectionID, pData, DataSize);
-		break;
-	case MSG_ADMIN_REQUEST:
-		ReceiveAdminRequest(iReadCount, User, ConnectionID, pData, DataSize);
-		break;
-	case MSG_ADMIN_STATUS:
-		ReceiveAdminStatus(iReadCount, User, ConnectionID, pData, DataSize);
-		break;
-	case MSG_CONNECTED:
-		ReceiveConnected(iReadCount, User, ConnectionID, pData, DataSize);
-		break;
-	case MSG_DELETE:
-		ReceiveDelete(iReadCount, User, ConnectionID, pData, DataSize);
-		break;
-	case MSG_ONLINE_LIST:
-		ReceiveOnlineList(iReadCount, User, ConnectionID, pData, DataSize);
-		break;
-	default:
-		TRACE_FUNC("Not valid msg\n");
-		break;
-	}
+		switch (Msg)
+		{
+		case MSG_SEND_CHAT_TO_HOST:
+			ReceiveSendChatToHost(iReadCount, User, ConnectionID, pData, DataSize);
+			break;
+		case MSG_SEND_CHAT_TO_CLIENT:
+			ReceiveSendChatToClient(iReadCount, User, ConnectionID, pData, DataSize);
+			break;
+		case MSG_ADMIN_REQUEST:
+			ReceiveAdminRequest(iReadCount, User, ConnectionID, pData, DataSize);
+			break;
+		case MSG_ADMIN_STATUS:
+			ReceiveAdminStatus(iReadCount, User, ConnectionID, pData, DataSize);
+			break;
+		case MSG_CONNECTED:
+			ReceiveConnected(iReadCount, User, ConnectionID, pData, DataSize);
+			break;
+		case MSG_DELETE:
+			ReceiveDelete(iReadCount, User, ConnectionID, pData, DataSize);
+			break;
+		case MSG_ONLINE_LIST:
+			ReceiveOnlineList(iReadCount, User, ConnectionID, pData, DataSize);
+			break;
+		default:
+			TRACE_FUNC("Not valid msg\n");
+			break;
+		}
 
-	delete[] pData;
+		delete[] pData;
+	}
 }
 
 void CNetworkChatManager::ReceiveSendChatToHost(int& iReadCount, chat_user* User, int iConnectionID, char* pData, int iDataSize)
