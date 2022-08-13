@@ -111,9 +111,6 @@ void CNetworkChatManager::ReceivePacketsRoutine()
 		auto pData = (char*)Packet.m_pPacket;
 		auto DataSize = Packet.m_iSize;
 
-		if (!DataSize)
-			return;
-
 		TRACE_FUNC("Packet.m_iConnectionID: %d, Packet.m_pPacket: %p, Packet.m_iSize: %d\n", ConnectionID, pData, DataSize);
 
 		int iReadCount = 0;
@@ -129,7 +126,7 @@ void CNetworkChatManager::ReceivePacketsRoutine()
 			if (!User->m_bConnected)
 			{
 				TRACE_FUNC("Client not connected. ID: %d\n", ConnectionID);
-				return;
+				continue;
 			}
 		}
 
