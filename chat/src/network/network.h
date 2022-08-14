@@ -27,13 +27,13 @@ class CNetwork;
 
 using NotificationCallbackUserDataPtr = void*;
 
-using f_ClientConnectionNotification = bool(*)(bool bIsPreConnectionStep, int iConnectionCount, int iIp, char* szIP, int iPort, NotificationCallbackUserDataPtr pUserData);
-using f_ClientDisconnectionNotification = bool(*)(int iConnectionCount, NotificationCallbackUserDataPtr pUserData);
+using f_ClientConnectionNotification = bool(*)(bool bIsPreConnectionStep, unsigned int iConnectionCount, int iIp, char* szIP, int iPort, NotificationCallbackUserDataPtr pUserData);
+using f_ClientDisconnectionNotification = bool(*)(unsigned int iConnectionCount, NotificationCallbackUserDataPtr pUserData);
 
 struct client_receive_data_thread
 {
 	SOCKET m_ConnectionSocket;
-	int m_iThreadId;
+	unsigned int m_iThreadId;
 	SOCKADDR_IN m_SockAddrIn;
 };
 
@@ -72,8 +72,8 @@ private:
 	int m_IPort;
 	SOCKADDR_IN m_SockAddrIn;
 	SOCKET m_Socket;
-	std::map<int, client_receive_data_thread> m_ClientsList;
-	int m_iConnectionCount;
+	std::map<unsigned int, client_receive_data_thread> m_ClientsList;
+	unsigned int m_iConnectionCount;
 	std::vector<net_packet> m_PacketsList;
 	bool m_bServerWasDowned;
 	f_ClientConnectionNotification m_pf_ClientConnectionNotificationCallback;
@@ -102,12 +102,12 @@ public:
 	
 	bool Startup();
 	bool SendPacketAll(void* pPacket, int iSize);
-	bool SendPacketExcludeID(void* pPacket, int iSize, std::vector<int>* vIDList);
-	bool SendPacketIncludeID(void* pPacket, int iSize, std::vector<int>* vIDList);
+	bool SendPacketExcludeID(void* pPacket, int iSize, std::vector<unsigned int>* vIDList);
+	bool SendPacketIncludeID(void* pPacket, int iSize, std::vector<unsigned int>* vIDList);
 	bool GetReceivedData(net_packet* pPacket);
 	bool ServerWasDowned();
 	bool IsHost();
-	int GetConnectedUsersCount();
+	unsigned int GetConnectedUsersCount();
 	void DisconnectUser(int IdCount);
 	bool GetIpByClientId(int IdCount, int* pIP);
 	char* GetStrIpFromSockAddrIn(PSOCKADDR_IN pSockAddrIn);

@@ -15,7 +15,7 @@ CChatData::~CChatData()
 	CleanupData();
 }
 
-bool CChatData::SendNewMessage(char* szUsername, char* szMessage, int iMessageCount, std::size_t UsernameSize, std::size_t MessageSize)
+bool CChatData::SendNewMessage(char* szUsername, char* szMessage, unsigned int iMessageOwnerID, int iMessageCount, bool IsMessageImportant, std::size_t UsernameSize, std::size_t MessageSize)
 {
 	if (!szUsername || !szMessage)
 		return false;
@@ -31,33 +31,7 @@ bool CChatData::SendNewMessage(char* szUsername, char* szMessage, int iMessageCo
 
 	auto MsgObj = AllocateNewMessagePointer(UsernameSize, MessageSize);
 
-	AddMessage(szUsername, UsernameSize, szMessage, MessageSize, iMessageCount, MsgObj);
-
-	IncreaseMessagesCounter();
-
-	return true;
-}
-
-bool CChatData::SendNewMessage(char* szData, int iMessageStartAfter, int iMessageCount, std::size_t DataSize)
-{
-	if (!szData)
-		return false;
-
-	if (!DataSize)
-		DataSize = strlen(szData);
-
-	if (!DataSize)
-		return false;
-
-	auto szUsername = szData;
-	auto UsernameSize = strlen(szData);
-
-	auto szMessage = szData + iMessageStartAfter;
-	auto MessageSize = strlen(szMessage);
-
-	auto MsgObj = AllocateNewMessagePointer(UsernameSize, MessageSize);
-
-	AddMessage(szUsername, UsernameSize, szMessage, MessageSize, iMessageCount, MsgObj);
+	AddMessage(szUsername, UsernameSize, szMessage, MessageSize, iMessageOwnerID, iMessageCount, IsMessageImportant, MsgObj);
 
 	IncreaseMessagesCounter();
 
@@ -116,8 +90,10 @@ pMessage CChatData::AllocateNewMessagePointer(std::size_t SizeUsername, std::siz
 	return this->m_ppMessagesArray[this->m_mMessagesArraySize];
 }
 
-void CChatData::AddMessage(char* szUsername, std::size_t UsernameSize, char* szMessage, std::size_t MessageSize, int iMessageCount, pMessage Message)
+void CChatData::AddMessage(char* szUsername, std::size_t UsernameSize, char* szMessage, std::size_t MessageSize, unsigned int iMessageOwnerID, int iMessageCount, bool IsMessageImportant, pMessage Message)
 {
+	Message->m_iMessageOwnerID = iMessageOwnerID;
+	Message->m_bMessageIsImportant = IsMessageImportant;
 	Message->m_iMessageID = iMessageCount;
 	memcpy(Message->m_szUsername, szUsername, UsernameSize);
 	memcpy(Message->m_szMessage, szMessage, MessageSize);

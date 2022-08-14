@@ -88,7 +88,7 @@ bool CNetwork::SendPacketAll(void* pPacket, int iSize)
 	return true;
 }
 
-bool CNetwork::SendPacketExcludeID(void* pPacket, int iSize, std::vector<int>* vIDList)
+bool CNetwork::SendPacketExcludeID(void* pPacket, int iSize, std::vector<unsigned int>* vIDList)
 {
 	if (!this->m_bIsInitialized)
 		return false;
@@ -119,7 +119,7 @@ bool CNetwork::SendPacketExcludeID(void* pPacket, int iSize, std::vector<int>* v
 	return true;
 }
 
-bool CNetwork::SendPacketIncludeID(void* pPacket, int iSize, std::vector<int>* vIDList)
+bool CNetwork::SendPacketIncludeID(void* pPacket, int iSize, std::vector<unsigned int>* vIDList)
 {
 	if (!this->m_bIsInitialized)
 		return false;
@@ -291,6 +291,8 @@ void CNetwork::thHostClientsHandling(void* arg)
 #endif // _WIN32
 		}
 
+		_this->m_iConnectionCount++;
+
 		auto iIP = _this->GetIntegerIpFromSockAddrIn(&SockAddrIn);
 		auto szIP = _this->GetStrIpFromSockAddrIn(&SockAddrIn);
 		auto iPort = _this->GetPortFromSockAddrIn(&SockAddrIn);
@@ -316,8 +318,6 @@ void CNetwork::thHostClientsHandling(void* arg)
 		Client.m_SockAddrIn = SockAddrIn;
 
 		_this->InvokeClientConnectionNotification(false, _this->m_iConnectionCount, iIP, szIP, iPort);
-
-		_this->m_iConnectionCount++;
 	}
 }
 
@@ -487,9 +487,9 @@ bool CNetwork::IsHost()
 	return this->m_bIsHost;
 }
 
-int CNetwork::GetConnectedUsersCount()
+unsigned int CNetwork::GetConnectedUsersCount()
 {
-	auto ret = 0;
+	unsigned int ret = 0;
 
 	for (auto it = this->m_ClientsList.begin(); it != this->m_ClientsList.end(); it++)
 	{

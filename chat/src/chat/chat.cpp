@@ -37,7 +37,7 @@ void Chat::StartupNetwork(bool IsHost, char szUsername[32])
 	ChatModePage = SELECT_MODE;
 	AppMode = PROCESS_INITIALIZING;
 
-	g_pNetworkChatManager = std::make_unique<CNetworkChatManager>(IsHost, szUsername, (char*)"127.0.0.1", 1488, MAX_PROCESSED_USERS_IN_CHAT);
+	g_pNetworkChatManager = std::make_unique<CNetworkChatManager>(IsHost, szUsername, (char*)"127.0.0.1", 1499, MAX_PROCESSED_USERS_IN_CHAT);
 	memset(szUsername, 0, 32);
 
 	printf("[+] %s -> Start initialize network at: %s\n", __FUNCTION__, IsHost ? "HOST" : "CLIENT");
@@ -168,6 +168,10 @@ void Chat::GuiPresents::GuiChat(bool* baBackButton)
 			iPrevMessagesCount = g_pNetworkChatManager->GetChatArraySize();
 			bNeedUpdateScroll = true;
 			TRACE_FUNC("Updated chat array size: %d\n", iPrevMessagesCount);
+
+			auto LastMsg = *g_pNetworkChatManager->GetChatData()->At(g_pNetworkChatManager->GetChatArraySize() - 1);
+
+			//printf("m_szUsername: %s m_szMessage: %s | GetClientConnectionID: %d m_iMessageOwnerID: %d | m_iMessageID: %d | m_bMessageIsImportant: %d\n", LastMsg->m_szUsername, LastMsg->m_szMessage, g_pNetworkChatManager->GetClientConnectionID(), LastMsg->m_iMessageOwnerID, LastMsg->m_iMessageID, LastMsg->m_bMessageIsImportant);
 		}
 
 		for (auto itMessage = g_pNetworkChatManager->GetChatData()->Begin(); itMessage != g_pNetworkChatManager->GetChatData()->End(); itMessage++)
