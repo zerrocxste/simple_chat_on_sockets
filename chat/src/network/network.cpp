@@ -56,6 +56,8 @@ bool CNetwork::SendToSocket(SOCKET Socket, void* pPacket, int iSize)
 {
 	auto ret = false;
 
+	SendDataCriticalSectionLock();
+
 	int iPacketSize = iSize;
 
 	if (send(Socket, (const char*)&iPacketSize, CNetwork::iPacketInfoLength, 0) == CNetwork::iPacketInfoLength)
@@ -63,6 +65,8 @@ bool CNetwork::SendToSocket(SOCKET Socket, void* pPacket, int iSize)
 		if (send(Socket, (const char*)pPacket, iSize, 0) == iSize)
 			ret = true;
 	}
+
+	SendDataCriticalSectionUnlock();
 
 	return ret;
 }
@@ -154,7 +158,7 @@ bool CNetwork::ReceivePacket(net_packet* pPacket)
 {
 	auto ret = false;
 
-	PacketsListCriticalSectionLock();
+	ExchangePacketsListCriticalSectionLock();
 
 	if (!this->m_PacketsList.empty())
 	{
@@ -167,7 +171,7 @@ bool CNetwork::ReceivePacket(net_packet* pPacket)
 		ret = true;
 	}
 
-	PacketsListCriticalSectionUnlock();
+	ExchangePacketsListCriticalSectionUnlock();
 
 	return ret;
 }
@@ -285,7 +289,7 @@ void CNetwork::thHostClientsHandling(void* arg)
 				TRACE_FUNC("Shutdown client connection handler thread\n");
 				break;
 			}
-	
+
 			TRACE_FUNC("Failed to client connection at: %d\n", (int)_this->m_ClientsList.size());
 			continue;
 #endif // _WIN32
@@ -408,23 +412,33 @@ bool CNetwork::InitializeAsClient()
 	return true;
 }
 
-void CNetwork::PacketsListCriticalSectionLock()
+void CNetwork::ExchangePacketsListCriticalSectionLock()
 {
 	this->m_mtxExchangePacketsData.lock();
 }
 
-void CNetwork::PacketsListCriticalSectionUnlock()
+void CNetwork::ExchangePacketsListCriticalSectionUnlock()
 {
 	this->m_mtxExchangePacketsData.unlock();
 }
 
+void CNetwork::SendDataCriticalSectionLock()
+{
+	this->m_mtxSendData.lock();
+}
+
+void CNetwork::SendDataCriticalSectionUnlock()
+{
+	this->m_mtxSendData.unlock();
+}
+
 void CNetwork::AddToPacketList(net_packet NetPacket)
 {
-	PacketsListCriticalSectionLock();
+	ExchangePacketsListCriticalSectionLock();
 
 	this->m_PacketsList.push_back(NetPacket);
 
-	PacketsListCriticalSectionUnlock();
+	ExchangePacketsListCriticalSectionUnlock();
 }
 
 bool CNetwork::AddClientsConnectionNotificationCallback(f_ClientConnectionNotification pf_NewClientsNotificationCallback, NotificationCallbackUserDataPtr pUserData)

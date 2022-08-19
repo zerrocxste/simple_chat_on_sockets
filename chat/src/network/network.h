@@ -80,12 +80,15 @@ private:
 	NotificationCallbackUserDataPtr m_pOnClientConnectionUserData;
 	f_ClientDisconnectionNotification m_pf_ClientDisconnectionNotificationCallback;
 	NotificationCallbackUserDataPtr m_pOnClientDisconnectionUserData;
+	std::mutex m_mtxSendData;
 	std::mutex m_mtxExchangePacketsData;
 
 	bool InitializeAsHost();
 	bool InitializeAsClient();
-	void PacketsListCriticalSectionLock();
-	void PacketsListCriticalSectionUnlock();
+	void ExchangePacketsListCriticalSectionLock();
+	void ExchangePacketsListCriticalSectionUnlock();
+	void SendDataCriticalSectionLock();
+	void SendDataCriticalSectionUnlock();
 	void AddToPacketList(net_packet NetPacket);
 	bool InvokeClientConnectionNotification(bool bIsPreConnectionStep, int iConnectionCount, int iIP, char* szIP, int iPort);
 	bool InvokeClientDisconnectionNotification(int iConnectionCount);
@@ -99,7 +102,7 @@ public:
 
 	CNetwork(bool IsHost, char* pszIP, int iPort, int iMaxProcessedUsersNumber);
 	~CNetwork();
-	
+
 	bool Startup();
 	bool SendPacketAll(void* pPacket, int iSize);
 	bool SendPacketExcludeID(void* pPacket, int iSize, std::vector<unsigned int>* vIDList);
