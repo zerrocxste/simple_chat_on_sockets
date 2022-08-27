@@ -24,7 +24,6 @@ bool CNetworkChatManager::OnConnectionNotification(bool bIsPreConnectionStep, un
 	else
 	{
 		pNetworkChatManager->SendConnectedMessage(iConnectionCount);
-		pNetworkChatManager->ResendLastMessagesToClient(iConnectionCount, 250);
 	}
 
 	return true;
@@ -297,6 +296,8 @@ void CNetworkChatManager::ReceiveConnected(int& iReadCount, chat_user* User, uns
 
 		std::vector<unsigned int> vIDList{ iConnectionID };
 		SendNetMsg(MSG_TYPE::MSG_CLIENT_CHAT_USER_ID, Packet, iWriteCount, &vIDList);
+
+		ResendLastMessagesToClient(iConnectionID, 250);
 	}
 }
 
@@ -571,12 +572,12 @@ bool CNetworkChatManager::SendConnectedMessage(unsigned int ID)
 
 	PacketWriteNetString(buff, &iWriteCount, this->m_szUsername, iUsernameLength);
 
-	if (IsHost()) 
+	if (IsHost())
 	{
 		std::vector<unsigned int> vList{ ID };
 		ret = SendNetMsg(MSG_TYPE::MSG_CONNECTED, buff, MsgSize, &vList);
 	}
-	else 
+	else
 	{
 		ret = SendNetMsg(MSG_TYPE::MSG_CONNECTED, buff, MsgSize);
 	}
@@ -720,9 +721,9 @@ const char* CNetworkChatManager::GetStrMsgType(MSG_TYPE MsgType)
 		return DELETE_CHAT_MSG;
 	case MSG_ONLINE_LIST:
 		return ONLINE_LIST_MSG;
-	default:
-		return nullptr;
 	}
+
+	return nullptr;
 }
 
 bool CNetworkChatManager::GrantAdmin(char* szLogin, char* szPassword, unsigned int iConnectionID)
@@ -837,7 +838,10 @@ CNetwork* CNetworkChatManager::GetNetwork()
 
 CChatData* CNetworkChatManager::GetChatData()
 {
-	return this->m_pChatData;
+	this->m_mtxChatData.lock();
+	auto ret = this->m_pChatData;
+	this->m_mtxChatData.unlock();
+	return ret;
 }
 
 chat_user* CNetworkChatManager::GetUser(unsigned int ID)

@@ -70,6 +70,7 @@ private:
 	char m_szUsername[32];
 	int m_iUsernameLength;
 	std::map<unsigned int, chat_user> m_vUsersList;
+	std::mutex m_mtxChatData;
 
 	char PacketReadChar(char* pData, int* pReadCount);
 	int PacketReadInteger(char* pData, int* pReadCount);

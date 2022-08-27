@@ -43,6 +43,12 @@ struct host_receive_thread_arg
 	client_receive_data_thread* m_CurrentClient;
 };
 
+struct deltaPacket_t
+{
+	short magic;
+	unsigned short m_iPacketSize;
+};
+
 class CNetwork : public IError
 {
 private:
@@ -51,7 +57,6 @@ private:
 #ifdef _WIN32
 	static int g_iCreatedLinkCount;
 	static WSADATA g_WSAdata;
-	__forceinline bool CreateWSA();
 #endif // _WIN32
 
 	template <class T> __forceinline static bool ThreadCreate(T* pfunc, void* arg) noexcept
@@ -83,22 +88,20 @@ private:
 	std::mutex m_mtxSendData;
 	std::mutex m_mtxExchangePacketsData;
 
+	bool InitializeNetwork();
 	bool InitializeAsHost();
 	bool InitializeAsClient();
-	void ExchangePacketsListCriticalSectionLock();
-	void ExchangePacketsListCriticalSectionUnlock();
-	void SendDataCriticalSectionLock();
-	void SendDataCriticalSectionUnlock();
 	void AddToPacketList(net_packet NetPacket);
 	bool InvokeClientConnectionNotification(bool bIsPreConnectionStep, int iConnectionCount, int iIP, char* szIP, int iPort);
 	bool InvokeClientDisconnectionNotification(int iConnectionCount);
 	bool SendToSocket(SOCKET Socket, void* pPacket, int iSize);
 	bool ReceivePacket(net_packet* pPacket);
+	void ShutdownNetwork();
 	void DropConnections();
 	void DisconnectSocket(SOCKET Socket);
 	void DisconnectClient(client_receive_data_thread* Client);
 public:
-	static const int iPacketInfoLength = sizeof(int);
+	static const int iPacketInfoLength = sizeof(deltaPacket_t);
 
 	CNetwork(bool IsHost, char* pszIP, int iPort, int iMaxProcessedUsersNumber);
 	~CNetwork();

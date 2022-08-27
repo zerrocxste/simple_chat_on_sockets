@@ -1,24 +1,13 @@
 #include "../includes.h"
 
+constexpr short g_DeltaPacketMagicValue = 1337;
+
+#define SEND(s, b, l) send(s, b, l, 0)
+#define RECV(s, b, l) recv(s, b, l, 0)
+
 #ifdef _WIN32
 int CNetwork::g_iCreatedLinkCount = 0;
 WSADATA CNetwork::g_WSAdata{};
-
-__forceinline bool CNetwork::CreateWSA()
-{
-	if (CNetwork::g_iCreatedLinkCount++ == 0)
-	{
-		memset(&this->g_WSAdata, 0, sizeof(WSADATA));
-
-		if (WSAStartup(MAKEWORD(2, 1), &CNetwork::g_WSAdata) != 0)
-		{
-			this->SetError(__FUNCTION__ " > WSAStartup error. WSAGetLastError: %d", WSAGetLastError());
-			return false;
-		}
-	}
-
-	return true;
-}
 #endif
 
 CNetwork::CNetwork(bool IsHost, char* pszIP, int iPort, int iMaxProcessedUsersNumber) :
@@ -42,31 +31,27 @@ CNetwork::~CNetwork()
 
 	closesocket(this->m_Socket);
 	this->m_Socket = 0;
+
 	DropConnections();
 
-#ifdef _WIN32
-	CNetwork::g_iCreatedLinkCount--;
-
-	if (CNetwork::g_iCreatedLinkCount == 0)
-		WSACleanup();
-#endif // _WIN32
+	ShutdownNetwork();
 }
 
 bool CNetwork::SendToSocket(SOCKET Socket, void* pPacket, int iSize)
 {
+	this->m_mtxSendData.lock();
+
 	auto ret = false;
 
-	SendDataCriticalSectionLock();
+	deltaPacket_t deltaData{ g_DeltaPacketMagicValue, iSize };
 
-	int iPacketSize = iSize;
-
-	if (send(Socket, (const char*)&iPacketSize, CNetwork::iPacketInfoLength, 0) == CNetwork::iPacketInfoLength)
+	if (SEND(Socket, (const char*)&deltaData, CNetwork::iPacketInfoLength) == CNetwork::iPacketInfoLength)
 	{
-		if (send(Socket, (const char*)pPacket, iSize, 0) == iSize)
+		if (SEND(Socket, (const char*)pPacket, iSize) == iSize)
 			ret = true;
 	}
 
-	SendDataCriticalSectionUnlock();
+	this->m_mtxSendData.unlock();
 
 	return ret;
 }
@@ -86,7 +71,7 @@ bool CNetwork::SendPacketAll(void* pPacket, int iSize)
 		if (!Socket)
 			continue;
 
-		auto Status = SendToSocket(Socket, pPacket, iSize);
+		SendToSocket(Socket, pPacket, iSize);
 	}
 
 	return true;
@@ -114,7 +99,7 @@ bool CNetwork::SendPacketExcludeID(void* pPacket, int iSize, std::vector<unsigne
 		{
 			if (CurrentID != ID)
 			{
-				auto Status = SendToSocket(Socket, pPacket, iSize);
+				SendToSocket(Socket, pPacket, iSize);
 				break;
 			}
 		}
@@ -145,7 +130,7 @@ bool CNetwork::SendPacketIncludeID(void* pPacket, int iSize, std::vector<unsigne
 		{
 			if (CurrentID == ID)
 			{
-				auto Status = SendToSocket(Socket, pPacket, iSize);
+				SendToSocket(Socket, pPacket, iSize);
 				break;
 			}
 		}
@@ -156,22 +141,22 @@ bool CNetwork::SendPacketIncludeID(void* pPacket, int iSize, std::vector<unsigne
 
 bool CNetwork::ReceivePacket(net_packet* pPacket)
 {
-	auto ret = false;
+	this->m_mtxExchangePacketsData.lock();
 
-	ExchangePacketsListCriticalSectionLock();
+	auto ret = false;
 
 	if (!this->m_PacketsList.empty())
 	{
 		auto it = this->m_PacketsList.begin();
-		auto& NetPacket = *it;
 
-		*pPacket = NetPacket;
+		*pPacket = *it;
+
 		this->m_PacketsList.erase(it);
 
 		ret = true;
 	}
 
-	ExchangePacketsListCriticalSectionUnlock();
+	this->m_mtxExchangePacketsData.unlock();
 
 	return ret;
 }
@@ -190,15 +175,39 @@ void CNetwork::DropConnections()
 	}
 }
 
+bool CNetwork::InitializeNetwork()
+{
+#ifdef _WIN32
+	if (CNetwork::g_iCreatedLinkCount++ == 0)
+	{
+		memset(&this->g_WSAdata, 0, sizeof(WSADATA));
+
+		if (WSAStartup(MAKEWORD(2, 2), &CNetwork::g_WSAdata) != 0)
+		{
+			this->SetError(__FUNCTION__ " > WSAStartup error. WSAGetLastError: %d", WSAGetLastError());
+			return false;
+		}
+	}
+#else
+	//
+#endif
+	return true;
+}
+
 bool CNetwork::Startup()
 {
 	if (m_bIsInitialized)
 		return true;
 
+	if (!InitializeNetwork())
+	{
 #ifdef _WIN32
-	if (!CreateWSA())
-		return false;
+		this->SetError(__FUNCTION__ " > Error initialize WinSock");
+#else
+		this->SetError(__FUNCTION__ " > Error initialize network");
 #endif // _WIN32
+		return false;
+	}
 
 	this->m_SockAddrIn.sin_addr.S_un.S_addr = inet_addr(this->m_pszIP);
 	this->m_SockAddrIn.sin_port = htons(this->m_IPort);
@@ -220,42 +229,68 @@ void CNetwork::thHostClientReceive(void* arg)
 	auto _this = HostReceiveThreadArg->m_Network;
 	auto Client = HostReceiveThreadArg->m_CurrentClient;
 
+	auto Socket = Client->m_ConnectionSocket;
 	auto ConnectionID = Client->m_iThreadId;
 
 	while (true)
 	{
-		int DataSize = 0;
+		deltaPacket_t deltaPacket{};
 
-		auto recv_ret = recv(Client->m_ConnectionSocket, (char*)&DataSize, CNetwork::iPacketInfoLength, 0);
-
-		if (recv_ret <= 0)
+		int resuidalDeltaPacketSize = 0;
+		while (resuidalDeltaPacketSize < CNetwork::iPacketInfoLength)
 		{
-			TRACE_FUNC("Dropped connection at clientid: %d\n", ConnectionID);
-			_this->InvokeClientDisconnectionNotification(ConnectionID);
-			_this->DisconnectClient(Client);
-			break;
-		}
+			auto recv_ret = RECV(Client->m_ConnectionSocket, (char*)(&deltaPacket) + resuidalDeltaPacketSize, CNetwork::iPacketInfoLength - resuidalDeltaPacketSize);
 
-		if (recv_ret == CNetwork::iPacketInfoLength && DataSize > 0)
-		{
-			TRACE_FUNC("Received data at clientid: %d, DataSize: %d\n", ConnectionID, DataSize);
-
-			auto pData = malloc(DataSize);
-			if (!pData)
+			if (recv_ret <= 0)
 			{
-				TRACE_FUNC("Failed to allocate memory, DataSize: %d\n", DataSize);
-				continue;
+				TRACE_FUNC("Dropped connection at clientid: %d\n", ConnectionID);
+				_this->InvokeClientDisconnectionNotification(ConnectionID);
+				_this->DisconnectClient(Client);
+				return;
 			}
 
-			recv(Client->m_ConnectionSocket, (char*)pData, DataSize, 0);
-
-			_this->AddToPacketList(net_packet(pData, DataSize, ConnectionID));
+			resuidalDeltaPacketSize += recv_ret;
 		}
 
-		std::this_thread::sleep_for(std::chrono::milliseconds(1));
-	}
+		if (deltaPacket.magic != g_DeltaPacketMagicValue)
+		{
+			TRACE_FUNC("Bad magic value. deltaData.magic: %d\n", deltaPacket.magic);
+			continue;
+		}
 
-	TRACE_FUNC("Exit receive thread clientid: %d\n", ConnectionID);
+		if (deltaPacket.m_iPacketSize <= 0)
+		{
+			TRACE_FUNC("Bad packet size length. deltaPacket.m_iPacketSize: %d\n", deltaPacket.m_iPacketSize);
+			continue;
+		}
+
+		auto pPacketData = (void*)new (std::nothrow) char[deltaPacket.m_iPacketSize];
+		if (!pPacketData)
+		{
+			TRACE_FUNC("Failed to allocate memory, deltaPacket.m_iPacketSize: %d\n", deltaPacket.m_iPacketSize);
+			continue;
+		}
+
+		int resuidalDataPacketSize = 0;
+		while (resuidalDataPacketSize < deltaPacket.m_iPacketSize)
+		{
+			auto recv_ret = RECV(Client->m_ConnectionSocket, (char*)(pPacketData)+resuidalDataPacketSize, deltaPacket.m_iPacketSize - resuidalDataPacketSize);
+
+			if (recv_ret <= 0)
+			{
+				TRACE_FUNC("Dropped connection at clientid: %d\n", ConnectionID);
+				_this->InvokeClientDisconnectionNotification(ConnectionID);
+				_this->DisconnectClient(Client);
+				return;
+			}
+
+			resuidalDataPacketSize += recv_ret;
+		}
+
+		TRACE_FUNC("Packet received. deltaPacket.magic: %d deltaPacket.m_iPacketSize: %d pPacketData: %p\n", deltaPacket.magic, deltaPacket.m_iPacketSize, pPacketData);
+
+		_this->AddToPacketList(net_packet(pPacketData, deltaPacket.m_iPacketSize, ConnectionID));
+	}
 }
 
 void CNetwork::thHostClientsHandling(void* arg)
@@ -310,16 +345,18 @@ void CNetwork::thHostClientsHandling(void* arg)
 			continue;
 		}
 
-		TRACE_FUNC("Connected clientid: %d\n", (int)_this->m_ClientsList.size());
-
 		auto& Client = _this->m_ClientsList[_this->m_iConnectionCount];
 		Client.m_ConnectionSocket = Connection;
-		host_receive_thread_arg	HostReceiveThreadArg{};
-		HostReceiveThreadArg.m_Network = _this;
-		HostReceiveThreadArg.m_CurrentClient = &Client;
-		CNetwork::ThreadCreate(&CNetwork::thHostClientReceive, &HostReceiveThreadArg);
 		Client.m_iThreadId = _this->m_iConnectionCount;
 		Client.m_SockAddrIn = SockAddrIn;
+
+		TRACE_FUNC("Connected clientid: %d\n", (int)_this->m_ClientsList.size());
+
+		host_receive_thread_arg* pHostReceiveThreadArg = new host_receive_thread_arg();
+		pHostReceiveThreadArg->m_Network = _this;
+		pHostReceiveThreadArg->m_CurrentClient = &Client;
+
+		CNetwork::ThreadCreate(&CNetwork::thHostClientReceive, pHostReceiveThreadArg);
 
 		_this->InvokeClientConnectionNotification(false, _this->m_iConnectionCount, iIP, szIP, iPort);
 	}
@@ -359,34 +396,60 @@ void CNetwork::thClientHostReceive(void* arg)
 
 	while (true)
 	{
-		int DataSize = 0;
+		deltaPacket_t deltaPacket{};
 
-		auto recv_ret = recv(Client->m_ConnectionSocket, (char*)&DataSize, CNetwork::iPacketInfoLength, 0);
-
-		if (recv_ret <= 0)
+		int resuidalDeltaPacketSize = 0;
+		while (resuidalDeltaPacketSize < CNetwork::iPacketInfoLength)
 		{
-			TRACE_FUNC("Host was closed\n");
-			_this->m_bServerWasDowned = true;
-			break;
-		}
+			auto recv_ret = RECV(Client->m_ConnectionSocket, (char*)(&deltaPacket) + resuidalDeltaPacketSize, CNetwork::iPacketInfoLength - resuidalDeltaPacketSize);
 
-		if (recv_ret == CNetwork::iPacketInfoLength && DataSize > 0)
-		{
-			TRACE_FUNC("Received data from host, size: %d\n", DataSize);
-
-			auto pData = malloc(DataSize);
-			if (!pData)
+			if (recv_ret <= 0)
 			{
-				TRACE_FUNC("Failed to allocate memory, DataSize: %d\n", DataSize);
-				continue;
+				TRACE_FUNC("Receive delta packet. Host was closed\n");
+				_this->m_bServerWasDowned = true;
+				return;
 			}
 
-			recv(Client->m_ConnectionSocket, (char*)pData, DataSize, 0);
-
-			_this->AddToPacketList(net_packet(pData, DataSize, 0));
+			resuidalDeltaPacketSize += recv_ret;
 		}
 
-		std::this_thread::sleep_for(std::chrono::milliseconds(1));
+		if (deltaPacket.magic != g_DeltaPacketMagicValue)
+		{
+			TRACE_FUNC("Bad magic value. deltaData.magic: %d\n", deltaPacket.magic);
+			continue;
+		}
+
+		if (deltaPacket.m_iPacketSize <= 0)
+		{
+			TRACE_FUNC("Bad packet size length. deltaPacket.m_iPacketSize: %d\n", deltaPacket.m_iPacketSize);
+			continue;
+		}
+
+		auto pPacketData = (void*)new (std::nothrow) char[deltaPacket.m_iPacketSize];
+		if (!pPacketData)
+		{
+			TRACE_FUNC("Failed to allocate memory, deltaPacket.m_iPacketSize: %d\n", deltaPacket.m_iPacketSize);
+			continue;
+		}
+
+		int resuidalDataPacketSize = 0;
+		while (resuidalDataPacketSize < deltaPacket.m_iPacketSize)
+		{
+			auto recv_ret = RECV(Client->m_ConnectionSocket, (char*)(pPacketData)+resuidalDataPacketSize, deltaPacket.m_iPacketSize - resuidalDataPacketSize);
+
+			if (recv_ret <= 0)
+			{
+				TRACE_FUNC("Receive delta packet. Host was closed\n");
+				_this->m_bServerWasDowned = true;
+				return;
+			}
+
+			resuidalDataPacketSize += recv_ret;
+		}
+
+		TRACE_FUNC("Packet received. deltaPacket.magic: %d deltaPacket.m_iPacketSize: %d pPacketData: %p\n", deltaPacket.magic, deltaPacket.m_iPacketSize, pPacketData);
+
+		_this->AddToPacketList(net_packet(pPacketData, deltaPacket.m_iPacketSize, 0));
 	}
 }
 
@@ -406,39 +469,21 @@ bool CNetwork::InitializeAsClient()
 
 	auto& Client = this->m_ClientsList[CLIENT_SOCKET];
 	Client.m_ConnectionSocket = this->m_Socket;
-	CNetwork::ThreadCreate(&CNetwork::thClientHostReceive, this);
 	Client.m_iThreadId = CLIENT_SOCKET;
+	Client.m_SockAddrIn = sockaddr_in();
+
+	CNetwork::ThreadCreate(&CNetwork::thClientHostReceive, this);
 
 	return true;
 }
 
-void CNetwork::ExchangePacketsListCriticalSectionLock()
-{
-	this->m_mtxExchangePacketsData.lock();
-}
-
-void CNetwork::ExchangePacketsListCriticalSectionUnlock()
-{
-	this->m_mtxExchangePacketsData.unlock();
-}
-
-void CNetwork::SendDataCriticalSectionLock()
-{
-	this->m_mtxSendData.lock();
-}
-
-void CNetwork::SendDataCriticalSectionUnlock()
-{
-	this->m_mtxSendData.unlock();
-}
-
 void CNetwork::AddToPacketList(net_packet NetPacket)
 {
-	ExchangePacketsListCriticalSectionLock();
+	this->m_mtxExchangePacketsData.lock();
 
 	this->m_PacketsList.push_back(NetPacket);
 
-	ExchangePacketsListCriticalSectionUnlock();
+	this->m_mtxExchangePacketsData.unlock();
 }
 
 bool CNetwork::AddClientsConnectionNotificationCallback(f_ClientConnectionNotification pf_NewClientsNotificationCallback, NotificationCallbackUserDataPtr pUserData)
@@ -517,6 +562,18 @@ unsigned int CNetwork::GetConnectedUsersCount()
 	}
 
 	return ret;
+}
+
+void CNetwork::ShutdownNetwork()
+{
+#ifdef _WIN32
+	CNetwork::g_iCreatedLinkCount--;
+
+	if (CNetwork::g_iCreatedLinkCount == 0)
+		WSACleanup();
+#else
+	//
+#endif // _WIN32
 }
 
 void CNetwork::DisconnectSocket(SOCKET Socket)
@@ -598,7 +655,7 @@ bool CNetwork::IntegerIpToStr(int iIP, char* szIP)
 
 	std::uint8_t* pIP = (std::uint8_t*)&iIP;
 
-	sprintf(szIP, "%d.%d.%d.%d\0", pIP[0], pIP[1], pIP[2], pIP[3]);
+	sprintf(szIP, "%d.%d.%d.%d", pIP[0], pIP[1], pIP[2], pIP[3]);
 
 	return true;
 }
