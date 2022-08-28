@@ -23,7 +23,7 @@ struct net_packet
 	int m_iConnectionID;
 };
 
-class CNetwork;
+class CNetworkTCP;
 
 using NotificationCallbackUserDataPtr = void*;
 
@@ -39,7 +39,7 @@ struct client_receive_data_thread
 
 struct host_receive_thread_arg
 {
-	CNetwork* m_Network;
+	CNetworkTCP* m_Network;
 	client_receive_data_thread* m_CurrentClient;
 };
 
@@ -49,9 +49,10 @@ struct deltaPacket_t
 	unsigned short m_iPacketSize;
 };
 
-class CNetwork : public IError
+class CNetworkTCP : public IError
 {
 private:
+	static const int iDeltaPacketLength = sizeof(deltaPacket_t);
 	int m_iSockAddrInLength = sizeof(SOCKADDR_IN);
 
 #ifdef _WIN32
@@ -101,10 +102,8 @@ private:
 	void DisconnectSocket(SOCKET Socket);
 	void DisconnectClient(client_receive_data_thread* Client);
 public:
-	static const int iPacketInfoLength = sizeof(deltaPacket_t);
-
-	CNetwork(bool IsHost, char* pszIP, int iPort, int iMaxProcessedUsersNumber);
-	~CNetwork();
+	CNetworkTCP(bool IsHost, char* pszIP, int iPort, int iMaxProcessedUsersNumber);
+	~CNetworkTCP();
 
 	bool Startup();
 	bool SendPacketAll(void* pPacket, int iSize);

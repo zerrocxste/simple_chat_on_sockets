@@ -6,11 +6,11 @@ constexpr short g_DeltaPacketMagicValue = 1337;
 #define RECV(s, b, l) recv(s, b, l, 0)
 
 #ifdef _WIN32
-int CNetwork::g_iCreatedLinkCount = 0;
-WSADATA CNetwork::g_WSAdata{};
+int CNetworkTCP::g_iCreatedLinkCount = 0;
+WSADATA CNetworkTCP::g_WSAdata{};
 #endif
 
-CNetwork::CNetwork(bool IsHost, char* pszIP, int iPort, int iMaxProcessedUsersNumber) :
+CNetworkTCP::CNetworkTCP(bool IsHost, char* pszIP, int iPort, int iMaxProcessedUsersNumber) :
 	m_bIsInitialized(false),
 	m_bIsHost(IsHost),
 	m_iMaxProcessedUsersNumber(iMaxProcessedUsersNumber),
@@ -25,7 +25,7 @@ CNetwork::CNetwork(bool IsHost, char* pszIP, int iPort, int iMaxProcessedUsersNu
 	memset(&this->m_SockAddrIn, 0, sizeof(SOCKADDR_IN));
 }
 
-CNetwork::~CNetwork()
+CNetworkTCP::~CNetworkTCP()
 {
 	TRACE_FUNC("Destructor called\n");
 
@@ -37,7 +37,7 @@ CNetwork::~CNetwork()
 	ShutdownNetwork();
 }
 
-bool CNetwork::SendToSocket(SOCKET Socket, void* pPacket, int iSize)
+bool CNetworkTCP::SendToSocket(SOCKET Socket, void* pPacket, int iSize)
 {
 	this->m_mtxSendData.lock();
 
@@ -45,7 +45,7 @@ bool CNetwork::SendToSocket(SOCKET Socket, void* pPacket, int iSize)
 
 	deltaPacket_t deltaData{ g_DeltaPacketMagicValue, iSize };
 
-	if (SEND(Socket, (const char*)&deltaData, CNetwork::iPacketInfoLength) == CNetwork::iPacketInfoLength)
+	if (SEND(Socket, (const char*)&deltaData, CNetworkTCP::iDeltaPacketLength) == CNetworkTCP::iDeltaPacketLength)
 	{
 		if (SEND(Socket, (const char*)pPacket, iSize) == iSize)
 			ret = true;
@@ -56,7 +56,7 @@ bool CNetwork::SendToSocket(SOCKET Socket, void* pPacket, int iSize)
 	return ret;
 }
 
-bool CNetwork::SendPacketAll(void* pPacket, int iSize)
+bool CNetworkTCP::SendPacketAll(void* pPacket, int iSize)
 {
 	if (!this->m_bIsInitialized)
 		return false;
@@ -77,7 +77,7 @@ bool CNetwork::SendPacketAll(void* pPacket, int iSize)
 	return true;
 }
 
-bool CNetwork::SendPacketExcludeID(void* pPacket, int iSize, std::vector<unsigned int>* vIDList)
+bool CNetworkTCP::SendPacketExcludeID(void* pPacket, int iSize, std::vector<unsigned int>* vIDList)
 {
 	if (!this->m_bIsInitialized)
 		return false;
@@ -108,7 +108,7 @@ bool CNetwork::SendPacketExcludeID(void* pPacket, int iSize, std::vector<unsigne
 	return true;
 }
 
-bool CNetwork::SendPacketIncludeID(void* pPacket, int iSize, std::vector<unsigned int>* vIDList)
+bool CNetworkTCP::SendPacketIncludeID(void* pPacket, int iSize, std::vector<unsigned int>* vIDList)
 {
 	if (!this->m_bIsInitialized)
 		return false;
@@ -139,7 +139,7 @@ bool CNetwork::SendPacketIncludeID(void* pPacket, int iSize, std::vector<unsigne
 	return true;
 }
 
-bool CNetwork::ReceivePacket(net_packet* pPacket)
+bool CNetworkTCP::ReceivePacket(net_packet* pPacket)
 {
 	this->m_mtxExchangePacketsData.lock();
 
@@ -161,7 +161,7 @@ bool CNetwork::ReceivePacket(net_packet* pPacket)
 	return ret;
 }
 
-void CNetwork::DropConnections()
+void CNetworkTCP::DropConnections()
 {
 	for (auto it = this->m_ClientsList.begin(); it != this->m_ClientsList.end(); it++)
 	{
@@ -175,14 +175,14 @@ void CNetwork::DropConnections()
 	}
 }
 
-bool CNetwork::InitializeNetwork()
+bool CNetworkTCP::InitializeNetwork()
 {
 #ifdef _WIN32
-	if (CNetwork::g_iCreatedLinkCount++ == 0)
+	if (CNetworkTCP::g_iCreatedLinkCount++ == 0)
 	{
 		memset(&this->g_WSAdata, 0, sizeof(WSADATA));
 
-		if (WSAStartup(MAKEWORD(2, 2), &CNetwork::g_WSAdata) != 0)
+		if (WSAStartup(MAKEWORD(2, 2), &CNetworkTCP::g_WSAdata) != 0)
 		{
 			this->SetError(__FUNCTION__ " > WSAStartup error. WSAGetLastError: %d", WSAGetLastError());
 			return false;
@@ -194,20 +194,13 @@ bool CNetwork::InitializeNetwork()
 	return true;
 }
 
-bool CNetwork::Startup()
+bool CNetworkTCP::Startup()
 {
-	if (m_bIsInitialized)
+	if (this->m_bIsInitialized)
 		return true;
 
 	if (!InitializeNetwork())
-	{
-#ifdef _WIN32
-		this->SetError(__FUNCTION__ " > Error initialize WinSock");
-#else
-		this->SetError(__FUNCTION__ " > Error initialize network");
-#endif // _WIN32
 		return false;
-	}
 
 	this->m_SockAddrIn.sin_addr.S_un.S_addr = inet_addr(this->m_pszIP);
 	this->m_SockAddrIn.sin_port = htons(this->m_IPort);
@@ -223,7 +216,7 @@ bool CNetwork::Startup()
 	return this->m_bIsInitialized;
 }
 
-void CNetwork::thHostClientReceive(void* arg)
+void CNetworkTCP::thHostClientReceive(void* arg)
 {
 	auto HostReceiveThreadArg = (host_receive_thread_arg*)arg;
 	auto _this = HostReceiveThreadArg->m_Network;
@@ -237,9 +230,9 @@ void CNetwork::thHostClientReceive(void* arg)
 		deltaPacket_t deltaPacket{};
 
 		int resuidalDeltaPacketSize = 0;
-		while (resuidalDeltaPacketSize < CNetwork::iPacketInfoLength)
+		while (resuidalDeltaPacketSize < CNetworkTCP::iDeltaPacketLength)
 		{
-			auto recv_ret = RECV(Client->m_ConnectionSocket, (char*)(&deltaPacket) + resuidalDeltaPacketSize, CNetwork::iPacketInfoLength - resuidalDeltaPacketSize);
+			auto recv_ret = RECV(Client->m_ConnectionSocket, (char*)(&deltaPacket) + resuidalDeltaPacketSize, CNetworkTCP::iDeltaPacketLength - resuidalDeltaPacketSize);
 
 			if (recv_ret <= 0)
 			{
@@ -293,9 +286,9 @@ void CNetwork::thHostClientReceive(void* arg)
 	}
 }
 
-void CNetwork::thHostClientsHandling(void* arg)
+void CNetworkTCP::thHostClientsHandling(void* arg)
 {
-	auto _this = (CNetwork*)arg;
+	auto _this = (CNetworkTCP*)arg;
 
 	while (true)
 	{
@@ -356,13 +349,13 @@ void CNetwork::thHostClientsHandling(void* arg)
 		pHostReceiveThreadArg->m_Network = _this;
 		pHostReceiveThreadArg->m_CurrentClient = &Client;
 
-		CNetwork::ThreadCreate(&CNetwork::thHostClientReceive, pHostReceiveThreadArg);
+		CNetworkTCP::ThreadCreate(&CNetworkTCP::thHostClientReceive, pHostReceiveThreadArg);
 
 		_this->InvokeClientConnectionNotification(false, _this->m_iConnectionCount, iIP, szIP, iPort);
 	}
 }
 
-bool CNetwork::InitializeAsHost()
+bool CNetworkTCP::InitializeAsHost()
 {
 	if (bind(this->m_Socket, (sockaddr*)&this->m_SockAddrIn, this->m_iSockAddrInLength) == SOCKET_ERROR)
 	{
@@ -384,14 +377,14 @@ bool CNetwork::InitializeAsHost()
 		return false;
 	}
 
-	CNetwork::ThreadCreate(&CNetwork::thHostClientsHandling, this);
+	CNetworkTCP::ThreadCreate(&CNetworkTCP::thHostClientsHandling, this);
 
 	return true;
 }
 
-void CNetwork::thClientHostReceive(void* arg)
+void CNetworkTCP::thClientHostReceive(void* arg)
 {
-	auto _this = (CNetwork*)arg;
+	auto _this = (CNetworkTCP*)arg;
 	auto Client = &_this->m_ClientsList[CLIENT_SOCKET];
 
 	while (true)
@@ -399,9 +392,9 @@ void CNetwork::thClientHostReceive(void* arg)
 		deltaPacket_t deltaPacket{};
 
 		int resuidalDeltaPacketSize = 0;
-		while (resuidalDeltaPacketSize < CNetwork::iPacketInfoLength)
+		while (resuidalDeltaPacketSize < CNetworkTCP::iDeltaPacketLength)
 		{
-			auto recv_ret = RECV(Client->m_ConnectionSocket, (char*)(&deltaPacket) + resuidalDeltaPacketSize, CNetwork::iPacketInfoLength - resuidalDeltaPacketSize);
+			auto recv_ret = RECV(Client->m_ConnectionSocket, (char*)(&deltaPacket) + resuidalDeltaPacketSize, CNetworkTCP::iDeltaPacketLength - resuidalDeltaPacketSize);
 
 			if (recv_ret <= 0)
 			{
@@ -453,7 +446,7 @@ void CNetwork::thClientHostReceive(void* arg)
 	}
 }
 
-bool CNetwork::InitializeAsClient()
+bool CNetworkTCP::InitializeAsClient()
 {
 	auto Connection = connect(this->m_Socket, (sockaddr*)&this->m_SockAddrIn, this->m_iSockAddrInLength);
 
@@ -472,12 +465,12 @@ bool CNetwork::InitializeAsClient()
 	Client.m_iThreadId = CLIENT_SOCKET;
 	Client.m_SockAddrIn = sockaddr_in();
 
-	CNetwork::ThreadCreate(&CNetwork::thClientHostReceive, this);
+	CNetworkTCP::ThreadCreate(&CNetworkTCP::thClientHostReceive, this);
 
 	return true;
 }
 
-void CNetwork::AddToPacketList(net_packet NetPacket)
+void CNetworkTCP::AddToPacketList(net_packet NetPacket)
 {
 	this->m_mtxExchangePacketsData.lock();
 
@@ -486,7 +479,7 @@ void CNetwork::AddToPacketList(net_packet NetPacket)
 	this->m_mtxExchangePacketsData.unlock();
 }
 
-bool CNetwork::AddClientsConnectionNotificationCallback(f_ClientConnectionNotification pf_NewClientsNotificationCallback, NotificationCallbackUserDataPtr pUserData)
+bool CNetworkTCP::AddClientsConnectionNotificationCallback(f_ClientConnectionNotification pf_NewClientsNotificationCallback, NotificationCallbackUserDataPtr pUserData)
 {
 	if (!IsHost())
 		return false;
@@ -499,7 +492,7 @@ bool CNetwork::AddClientsConnectionNotificationCallback(f_ClientConnectionNotifi
 	return true;
 }
 
-bool CNetwork::AddClientsDisconnectionNotificationCallback(f_ClientDisconnectionNotification pf_ClientDisconnectionNotification, NotificationCallbackUserDataPtr pUserData)
+bool CNetworkTCP::AddClientsDisconnectionNotificationCallback(f_ClientDisconnectionNotification pf_ClientDisconnectionNotification, NotificationCallbackUserDataPtr pUserData)
 {
 	if (!IsHost())
 		return false;
@@ -512,7 +505,7 @@ bool CNetwork::AddClientsDisconnectionNotificationCallback(f_ClientDisconnection
 	return true;
 }
 
-bool CNetwork::InvokeClientConnectionNotification(bool bIsPreConnectionStep, int iConnectionCount, int iIP, char* szIP, int iPort)
+bool CNetworkTCP::InvokeClientConnectionNotification(bool bIsPreConnectionStep, int iConnectionCount, int iIP, char* szIP, int iPort)
 {
 	if (!this->m_pf_ClientConnectionNotificationCallback)
 		return true;
@@ -520,7 +513,7 @@ bool CNetwork::InvokeClientConnectionNotification(bool bIsPreConnectionStep, int
 	return m_pf_ClientConnectionNotificationCallback(bIsPreConnectionStep, iConnectionCount, iIP, szIP, iPort, this->m_pOnClientConnectionUserData);
 }
 
-bool CNetwork::InvokeClientDisconnectionNotification(int iConnectionCount)
+bool CNetworkTCP::InvokeClientDisconnectionNotification(int iConnectionCount)
 {
 	if (!this->m_pf_ClientDisconnectionNotificationCallback)
 		return true;
@@ -528,12 +521,12 @@ bool CNetwork::InvokeClientDisconnectionNotification(int iConnectionCount)
 	return m_pf_ClientDisconnectionNotificationCallback(iConnectionCount, this->m_pOnClientDisconnectionUserData);
 }
 
-bool CNetwork::GetReceivedData(net_packet* pPacket)
+bool CNetworkTCP::GetReceivedData(net_packet* pPacket)
 {
 	return ReceivePacket(pPacket);
 }
 
-bool CNetwork::ServerWasDowned()
+bool CNetworkTCP::ServerWasDowned()
 {
 	if (IsHost())
 		return false;
@@ -541,12 +534,12 @@ bool CNetwork::ServerWasDowned()
 	return this->m_bServerWasDowned;
 }
 
-bool CNetwork::IsHost()
+bool CNetworkTCP::IsHost()
 {
 	return this->m_bIsHost;
 }
 
-unsigned int CNetwork::GetConnectedUsersCount()
+unsigned int CNetworkTCP::GetConnectedUsersCount()
 {
 	unsigned int ret = 0;
 
@@ -564,37 +557,37 @@ unsigned int CNetwork::GetConnectedUsersCount()
 	return ret;
 }
 
-void CNetwork::ShutdownNetwork()
+void CNetworkTCP::ShutdownNetwork()
 {
 #ifdef _WIN32
-	CNetwork::g_iCreatedLinkCount--;
+	CNetworkTCP::g_iCreatedLinkCount--;
 
-	if (CNetwork::g_iCreatedLinkCount == 0)
+	if (CNetworkTCP::g_iCreatedLinkCount == 0)
 		WSACleanup();
 #else
 	//
 #endif // _WIN32
 }
 
-void CNetwork::DisconnectSocket(SOCKET Socket)
+void CNetworkTCP::DisconnectSocket(SOCKET Socket)
 {
 	shutdown(Socket, SD_BOTH);
 	closesocket(Socket);
 }
 
-void CNetwork::DisconnectClient(client_receive_data_thread* Client)
+void CNetworkTCP::DisconnectClient(client_receive_data_thread* Client)
 {
 	DisconnectSocket(Client->m_ConnectionSocket);
 	Client->m_ConnectionSocket = 0;
 }
 
-void CNetwork::DisconnectUser(int IdCount)
+void CNetworkTCP::DisconnectUser(int IdCount)
 {
 	auto Client = &this->m_ClientsList[IdCount];
 	DisconnectClient(Client);
 }
 
-bool CNetwork::GetIpByClientId(int IdCount, int* pIP)
+bool CNetworkTCP::GetIpByClientId(int IdCount, int* pIP)
 {
 	if (!IsHost())
 		return false;
@@ -609,7 +602,7 @@ bool CNetwork::GetIpByClientId(int IdCount, int* pIP)
 	return true;
 }
 
-char* CNetwork::GetStrIpFromSockAddrIn(PSOCKADDR_IN pSockAddrIn)
+char* CNetworkTCP::GetStrIpFromSockAddrIn(PSOCKADDR_IN pSockAddrIn)
 {
 	if (!pSockAddrIn)
 		return nullptr;
@@ -617,7 +610,7 @@ char* CNetwork::GetStrIpFromSockAddrIn(PSOCKADDR_IN pSockAddrIn)
 	return inet_ntoa(pSockAddrIn->sin_addr);
 }
 
-int CNetwork::GetIntegerIpFromSockAddrIn(PSOCKADDR_IN pSockAddrIn)
+int CNetworkTCP::GetIntegerIpFromSockAddrIn(PSOCKADDR_IN pSockAddrIn)
 {
 	if (!pSockAddrIn)
 		return 0;
@@ -625,7 +618,7 @@ int CNetwork::GetIntegerIpFromSockAddrIn(PSOCKADDR_IN pSockAddrIn)
 	return pSockAddrIn->sin_addr.S_un.S_addr;
 }
 
-int CNetwork::GetPortFromSockAddrIn(PSOCKADDR_IN pSockAddrIn)
+int CNetworkTCP::GetPortFromSockAddrIn(PSOCKADDR_IN pSockAddrIn)
 {
 	if (!pSockAddrIn)
 		return 0;
@@ -633,7 +626,7 @@ int CNetwork::GetPortFromSockAddrIn(PSOCKADDR_IN pSockAddrIn)
 	return ntohs(pSockAddrIn->sin_port);
 }
 
-bool CNetwork::StrIpToInteger(char* szIP, int* pIP)
+bool CNetworkTCP::StrIpToInteger(char* szIP, int* pIP)
 {
 	if (!szIP || !pIP)
 		return false;
@@ -648,7 +641,7 @@ bool CNetwork::StrIpToInteger(char* szIP, int* pIP)
 	return true;
 }
 
-bool CNetwork::IntegerIpToStr(int iIP, char* szIP)
+bool CNetworkTCP::IntegerIpToStr(int iIP, char* szIP)
 {
 	if (iIP == 0 || !szIP)
 		return false;

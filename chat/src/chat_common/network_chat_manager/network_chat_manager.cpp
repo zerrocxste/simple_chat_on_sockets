@@ -53,7 +53,7 @@ CNetworkChatManager::CNetworkChatManager(bool IsHost, char* szUsername, char* ps
 	this->m_iUsernameLength = strlen(szUsername);
 	memcpy(this->m_szUsername, szUsername, this->m_iUsernameLength + NULL_TERMINATE_BYTE_SIZE);
 
-	this->m_pNetwork = new CNetwork(this->m_bIsHost, pszIP, iPort, m_iMaxProcessedUsersNumber);
+	this->m_pNetwork = new CNetworkTCP(this->m_bIsHost, pszIP, iPort, m_iMaxProcessedUsersNumber);
 	this->m_pChatData = new CChatData();
 }
 
@@ -831,7 +831,7 @@ void CNetworkChatManager::SendActiveUsersToClients()
 	this->m_iUsersConnectedToHostPrevFrame = iConnectedUsers;
 }
 
-CNetwork* CNetworkChatManager::GetNetwork()
+CNetworkTCP* CNetworkChatManager::GetNetwork()
 {
 	return this->m_pNetwork;
 }

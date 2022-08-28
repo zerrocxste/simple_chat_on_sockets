@@ -65,7 +65,7 @@ private:
 	unsigned int m_iUsersConnectedToHostPrevFrame;
 	int m_iMaxProcessedUsersNumber;
 	int m_iMessageCount;
-	CNetwork* m_pNetwork;
+	CNetworkTCP* m_pNetwork;
 	CChatData* m_pChatData;
 	char m_szUsername[32];
 	int m_iUsernameLength;
@@ -94,7 +94,7 @@ private:
 	const char* GetStrMsgType(MSG_TYPE MsgType);
 	bool GrantAdmin(char* szLogin, char* szPassword, unsigned int iConnectionID);
 	bool SendStatusAdmin(unsigned int ID, bool IsGranted);
-	CNetwork* GetNetwork();
+	CNetworkTCP* GetNetwork();
 	chat_user* GetUser(unsigned int ID);
 };
 
