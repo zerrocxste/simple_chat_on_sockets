@@ -37,7 +37,7 @@ void Chat::StartupNetwork(bool IsHost, char szUsername[32])
 	ChatModePage = SELECT_MODE;
 	AppMode = PROCESS_INITIALIZING;
 
-	g_pNetworkChatManager = std::make_unique<CNetworkChatManager>(IsHost, szUsername, (char*)"127.0.0.1", 1967, MAX_PROCESSED_USERS_IN_CHAT);
+	g_pNetworkChatManager = std::make_unique<CNetworkChatManager>(IsHost, szUsername, (char*)"127.0.0.1", 1471, MAX_PROCESSED_USERS_IN_CHAT);
 	memset(szUsername, 0, 32);
 
 	printf("[+] %s -> Start initialize network at: %s\n", __FUNCTION__, IsHost ? "HOST" : "CLIENT");
@@ -199,6 +199,8 @@ void Chat::GuiPresents::GuiChat(bool* baBackButton)
 				return false;
 			};
 
+			auto IsAdmin = g_pNetworkChatManager->IsAdmin();
+
 			auto ID = message->m_iMessageID;
 			auto IDStr = std::string("##") + std::to_string(ID);
 
@@ -208,7 +210,7 @@ void Chat::GuiPresents::GuiChat(bool* baBackButton)
 
 			if (ImGui::Selectable(IDStr.c_str(), IsFounded))
 			{
-				if (g_pNetworkChatManager->IsAdmin())
+				if (IsAdmin)
 				{
 					if (ID != UNTRACKED_MESSAGE)
 					{
@@ -228,8 +230,9 @@ void Chat::GuiPresents::GuiChat(bool* baBackButton)
 
 			ImGui::SameLine();
 
-			//ImGui::Text("[%d] %s: %s", message->m_iMessageID, message->m_szUsername, message->m_szMessage);
-			ImGui::Text("%s: %s", message->m_szUsername, message->m_szMessage);
+			IsAdmin ? 
+				ImGui::Text("[%d] %s: %s", message->m_iMessageID, message->m_szUsername, message->m_szMessage) :
+				ImGui::TextWrapped("%s: %s", message->m_szUsername, message->m_szMessage);
 		}
 
 		static CUpdateEvery g_UpdateActiveUsersEvery(100);

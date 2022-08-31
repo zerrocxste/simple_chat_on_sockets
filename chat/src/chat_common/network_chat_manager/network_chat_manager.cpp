@@ -103,7 +103,7 @@ void CNetworkChatManager::ReceivePacketsRoutine()
 	if (GetNetwork()->ServerWasDowned())
 		Shutdown();
 
-	net_packet Packet;
+	net_packet_t Packet;
 
 	while (GetNetwork()->GetReceivedData(&Packet))
 	{
