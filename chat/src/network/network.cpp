@@ -10,7 +10,7 @@ int CNetworkTCP::g_iCreatedLinkCount = 0;
 WSADATA CNetworkTCP::g_WSAdata{};
 #endif
 
-CNetworkTCP::CNetworkTCP(bool IsHost, char* pszIP, int iPort, int iMaxProcessedUsersNumber) :
+CNetworkTCP::CNetworkTCP(bool IsHost, char* pszIP, int iPort, unsigned int iMaxProcessedUsersNumber) :
 	m_bIsInitialized(false),
 	m_bIsHost(IsHost),
 	m_iMaxProcessedUsersNumber(iMaxProcessedUsersNumber),
@@ -37,30 +37,23 @@ CNetworkTCP::~CNetworkTCP()
 	ShutdownNetwork();
 }
 
-bool CNetworkTCP::SendToSocket(SOCKET Socket, void* pPacket, int iSize)
+void CNetworkTCP::SendToSocket(void* pPacket, int iSize, const CNetworkTCP::NETSOCK Socket)
 {
-	this->m_mtxSendData.lock();
+	if (!Socket)
+		return;
 
-	auto ret = false;
+	this->m_mtxSendData.lock();
 
 	delta_packet_t deltaPacket{ g_DeltaPacketMagicValue, iSize };
 
 	if (SEND(Socket, (const char*)&deltaPacket, CNetworkTCP::iDeltaPacketLength) == CNetworkTCP::iDeltaPacketLength)
-	{
-		if (SEND(Socket, (const char*)pPacket, iSize) == iSize)
-			ret = true;
-	}
+		SEND(Socket, (const char*)pPacket, iSize);
 
 	this->m_mtxSendData.unlock();
-
-	return ret;
 }
 
-bool CNetworkTCP::SendPacketAll(void* pPacket, int iSize)
+void CNetworkTCP::SendPacket(void* pPacket, int iSize)
 {
-	if (!this->m_bIsInitialized)
-		return false;
-
 	for (auto& pair : this->m_ClientsList)
 	{
 		auto Socket = pair.second.m_ConnectionSocket;
@@ -68,62 +61,32 @@ bool CNetworkTCP::SendPacketAll(void* pPacket, int iSize)
 		if (!Socket)
 			continue;
 
-		SendToSocket(Socket, pPacket, iSize);
+		SendToSocket(pPacket, iSize, Socket);
 	}
-
-	return true;
 }
 
-bool CNetworkTCP::SendPacketExcludeID(void* pPacket, int iSize, std::vector<unsigned int>* vIDList)
+void CNetworkTCP::SendPacket(void* pPacket, int iSize, const unsigned int iConnectionID)
 {
-	if (!this->m_bIsInitialized)
-		return false;
+	auto Socket = this->m_ClientsList[iConnectionID].m_ConnectionSocket;
 
-	if (!vIDList)
-		return false;
+	if (!Socket)
+		return;
+		
+	SendToSocket(pPacket, iSize, Socket);
+}
 
-	if (vIDList->empty())
-		return false;
+void CNetworkTCP::SendPacket(void* pPacket, int iSize, void* pUserData, bool(*pfSortingDelegate)(void* pUserData, unsigned int iConnectionID))
+{
+	if (!pfSortingDelegate)
+		return;
 
 	for (auto& pair : this->m_ClientsList)
 	{
-		for (auto id : *vIDList)
-		{
-			if (pair.second.m_iThreadId != id)
-			{
-				SendToSocket(pair.second.m_ConnectionSocket, pPacket, iSize);
-				break;
-			}
-		}
+		if (!pfSortingDelegate(pUserData, pair.second.m_iConnectionID))
+			continue;
+
+		SendToSocket(pPacket, iSize, pair.second.m_ConnectionSocket);
 	}
-
-	return true;
-}
-
-bool CNetworkTCP::SendPacketIncludeID(void* pPacket, int iSize, std::vector<unsigned int>* vIDList)
-{
-	if (!this->m_bIsInitialized)
-		return false;
-
-	if (!vIDList)
-		return false;
-
-	if (vIDList->empty())
-		return false;
-
-	for (auto& pair : this->m_ClientsList)
-	{
-		for (auto id : *vIDList)
-		{
-			if (pair.second.m_iThreadId == id)
-			{
-				SendToSocket(pair.second.m_ConnectionSocket, pPacket, iSize);
-				break;
-			}
-		}
-	}
-
-	return true;
 }
 
 bool CNetworkTCP::ReceivePacket(net_packet_t* pPacket)
@@ -207,21 +170,23 @@ void CNetworkTCP::thHostClientReceive(void* arg)
 	auto _this = ((host_receive_thread_arg_t*)arg)->m_Network;
 	auto Client = ((host_receive_thread_arg_t*)arg)->m_CurrentClient;
 
+	delete (host_receive_thread_arg_t*)arg;
+
 	auto Socket = Client->m_ConnectionSocket;
-	auto ConnectionID = Client->m_iThreadId;
+	auto ConnectionID = Client->m_iConnectionID;
 
 	while (true)
 	{
 		delta_packet_t deltaPacket{};
 
-		int resuidalDeltaPacketSize = 0;
+		short resuidalDeltaPacketSize = 0;
 		while (resuidalDeltaPacketSize < CNetworkTCP::iDeltaPacketLength)
 		{
 			auto recv_ret = RECV(Socket, (char*)(&deltaPacket) + resuidalDeltaPacketSize, CNetworkTCP::iDeltaPacketLength - resuidalDeltaPacketSize);
 
 			if (recv_ret <= 0)
 			{
-				TRACE_FUNC("Dropped connection at clientid: %d\n", ConnectionID);
+				TRACE_FUNC("Dropped connection at ID: %d\n", ConnectionID);
 				_this->InvokeClientDisconnectionNotification(ConnectionID);
 				_this->DisconnectClient(Client);
 				return;
@@ -232,31 +197,31 @@ void CNetworkTCP::thHostClientReceive(void* arg)
 
 		if (deltaPacket.magic != g_DeltaPacketMagicValue)
 		{
-			TRACE_FUNC("Bad magic value. deltaPacket.magic: %d\n", deltaPacket.magic);
+			TRACE_FUNC("Bad magic value from ID: %d. deltaPacket.magic: %d\n", ConnectionID, deltaPacket.magic);
 			continue;
 		}
 
 		if (deltaPacket.m_iPacketSize <= 0)
 		{
-			TRACE_FUNC("Bad packet size length. deltaPacket.m_iPacketSize: %d\n", deltaPacket.m_iPacketSize);
+			TRACE_FUNC("Bad packet size length from ID: %d. deltaPacket.m_iPacketSize: %d\n", ConnectionID, deltaPacket.m_iPacketSize);
 			continue;
 		}
 
 		auto pPacketData = (void*)new (std::nothrow) char[deltaPacket.m_iPacketSize];
 		if (!pPacketData)
 		{
-			TRACE_FUNC("Failed to allocate memory, deltaPacket.m_iPacketSize: %d\n", deltaPacket.m_iPacketSize);
+			TRACE_FUNC("Failed to allocate memory from ID: %d. deltaPacket.m_iPacketSize: %d\n", ConnectionID, deltaPacket.m_iPacketSize);
 			continue;
 		}
 
-		int resuidalDataPacketSize = 0;
+		short resuidalDataPacketSize = 0;
 		while (resuidalDataPacketSize < deltaPacket.m_iPacketSize)
 		{
 			auto recv_ret = RECV(Socket, (char*)(pPacketData)+resuidalDataPacketSize, deltaPacket.m_iPacketSize - resuidalDataPacketSize);
 
 			if (recv_ret <= 0)
 			{
-				TRACE_FUNC("Dropped connection at clientid: %d\n", ConnectionID);
+				TRACE_FUNC("Dropped connection at ID: %d\n", ConnectionID);
 				_this->InvokeClientDisconnectionNotification(ConnectionID);
 				_this->DisconnectClient(Client);
 				return;
@@ -265,7 +230,7 @@ void CNetworkTCP::thHostClientReceive(void* arg)
 			resuidalDataPacketSize += recv_ret;
 		}
 
-		TRACE_FUNC("Packet received. deltaPacket.magic: %d deltaPacket.m_iPacketSize: %d pPacketData: %p\n", deltaPacket.magic, deltaPacket.m_iPacketSize, pPacketData);
+		TRACE_FUNC("Packet received from ID: %d deltaPacket.magic: %d deltaPacket.m_iPacketSize: %d pPacketData: %p\n", ConnectionID, deltaPacket.magic, deltaPacket.m_iPacketSize, pPacketData);
 
 		_this->AddToPacketList(net_packet_t(pPacketData, deltaPacket.m_iPacketSize, ConnectionID));
 	}
@@ -318,14 +283,14 @@ void CNetworkTCP::thHostClientsHandling(void* arg)
 
 		if (!_this->InvokeClientConnectionNotification(true, _this->m_iConnectionCount, iIP, szIP, iPort))
 		{
-			TRACE_FUNC("Aborted connection by host user clientid: %d\n", (int)_this->m_ClientsList.size());
+			TRACE_FUNC("Aborted connection by host user ID: %d\n", (int)_this->m_ClientsList.size());
 			_this->DisconnectSocket(Connection);
 			continue;
 		}
 
 		auto& Client = _this->m_ClientsList[_this->m_iConnectionCount];
 		Client.m_ConnectionSocket = Connection;
-		Client.m_iThreadId = _this->m_iConnectionCount;
+		Client.m_iConnectionID = _this->m_iConnectionCount;
 		Client.m_SockAddrIn = SockAddrIn;
 
 		TRACE_FUNC("Connected clientid: %d\n", (int)_this->m_ClientsList.size());
@@ -377,7 +342,7 @@ void CNetworkTCP::thClientHostReceive(void* arg)
 	{
 		delta_packet_t deltaPacket{};
 
-		int resuidalDeltaPacketSize = 0;
+		short resuidalDeltaPacketSize = 0;
 		while (resuidalDeltaPacketSize < CNetworkTCP::iDeltaPacketLength)
 		{
 			auto recv_ret = RECV(Socket, (char*)(&deltaPacket) + resuidalDeltaPacketSize, CNetworkTCP::iDeltaPacketLength - resuidalDeltaPacketSize);
@@ -411,7 +376,7 @@ void CNetworkTCP::thClientHostReceive(void* arg)
 			continue;
 		}
 
-		int resuidalDataPacketSize = 0;
+		short resuidalDataPacketSize = 0;
 		while (resuidalDataPacketSize < deltaPacket.m_iPacketSize)
 		{
 			auto recv_ret = RECV(Socket, (char*)(pPacketData)+resuidalDataPacketSize, deltaPacket.m_iPacketSize - resuidalDataPacketSize);
@@ -448,7 +413,7 @@ bool CNetworkTCP::InitializeAsClient()
 
 	auto& Client = this->m_ClientsList[CLIENT_SOCKET];
 	Client.m_ConnectionSocket = this->m_Socket;
-	Client.m_iThreadId = CLIENT_SOCKET;
+	Client.m_iConnectionID = CLIENT_SOCKET;
 	Client.m_SockAddrIn = sockaddr_in();
 
 	CNetworkTCP::ThreadCreate(&CNetworkTCP::thClientHostReceive, this);
@@ -499,17 +464,22 @@ bool CNetworkTCP::InvokeClientConnectionNotification(bool bIsPreConnectionStep, 
 	return m_pf_ClientConnectionNotificationCallback(bIsPreConnectionStep, iConnectionCount, iIP, szIP, iPort, this->m_pOnClientConnectionUserData);
 }
 
-bool CNetworkTCP::InvokeClientDisconnectionNotification(int iConnectionCount)
+bool CNetworkTCP::InvokeClientDisconnectionNotification(unsigned int iConnectionID)
 {
 	if (!this->m_pf_ClientDisconnectionNotificationCallback)
 		return true;
 
-	return m_pf_ClientDisconnectionNotificationCallback(iConnectionCount, this->m_pOnClientDisconnectionUserData);
+	return m_pf_ClientDisconnectionNotificationCallback(iConnectionID, this->m_pOnClientDisconnectionUserData);
 }
 
 bool CNetworkTCP::GetReceivedData(net_packet_t* pPacket)
 {
 	return ReceivePacket(pPacket);
+}
+
+CNetworkTCP::NETSOCK CNetworkTCP::GetSocketFromConnectionID(unsigned int iConnectionID)
+{
+	return this->m_ClientsList[iConnectionID].m_ConnectionSocket;
 }
 
 bool CNetworkTCP::ServerWasDowned()
@@ -564,18 +534,18 @@ void CNetworkTCP::DisconnectClient(client_receive_data_thread_t* Client)
 	Client->m_ConnectionSocket = 0;
 }
 
-void CNetworkTCP::DisconnectUser(int IdCount)
+void CNetworkTCP::DisconnectUser(unsigned int iConnectionID)
 {
-	auto Client = &this->m_ClientsList[IdCount];
+	auto Client = &this->m_ClientsList[iConnectionID];
 	DisconnectClient(Client);
 }
 
-bool CNetworkTCP::GetIpByClientId(int IdCount, int* pIP)
+bool CNetworkTCP::GetIpByClientId(unsigned int iConnectionID, int* pIP)
 {
 	if (!IsHost())
 		return false;
 
-	auto Client = &this->m_ClientsList[IdCount];
+	auto Client = &this->m_ClientsList[iConnectionID];
 
 	if (!Client)
 		return false;

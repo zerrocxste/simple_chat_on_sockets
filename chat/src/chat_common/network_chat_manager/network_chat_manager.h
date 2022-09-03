@@ -1,3 +1,5 @@
+class CNetworkChatManager;
+
 enum MSG_TYPE
 {
 	MSG_NONE,
@@ -20,6 +22,23 @@ struct chat_user
 	char m_szUsername[MAX_USERNAME_SIZE];
 };
 
+struct chat_packet_data_t
+{
+	friend CNetworkChatManager;
+public:
+	chat_packet_data_t();
+	chat_packet_data_t(const chat_packet_data_t& PacketData);
+	chat_packet_data_t(short iMessageLength);
+	chat_packet_data_t(char* pPacket, short iMessageLength);
+	~chat_packet_data_t();
+	operator bool() const;
+	bool operator!() const;
+	void operator=(const chat_packet_data_t& PacketData);
+private:
+	mutable char* m_pPacket;
+	short m_iMessageLength;
+};
+
 class CNetworkChatManager
 {
 public:
@@ -37,15 +56,15 @@ public:
 	void ReceiveClientChatUserID(int& iReadCount, chat_user* User, unsigned int iConnectionID, char* pData, int iDataSize);
 	void ReceiveDelete(int& iReadCount, chat_user* User, unsigned int iConnectionID, char* pData, int iDataSize);
 	void ReceiveOnlineList(int& iReadCount, chat_user* User, unsigned int iConnectionID, char* pData, int iDataSize);
-	bool SendChatMessage(char* szMessage);
+	void SendChatMessage(char* szMessage);
 	size_t GetChatArraySize();
 	bool IsNeedExit();
 	bool IsHost();
 	void AddUser(unsigned int ID, int IP, int Port);
-	void ResendLastMessagesToClient(unsigned int ID, int iNumberToResend);
-	bool DisconnectUser(unsigned int ID);
+	void ResendLastMessagesToClient(unsigned int iConnectionID, int iNumberToResend);
+	bool DisconnectUser(unsigned int iConnectionID);
 	bool RequestAdmin(char* szLogin, char* szPassword);
-	bool SendConnectedMessage(unsigned int ID = 0);
+	void SendConnectedMessage(unsigned int iConnectionID = 0);
 	bool DeleteChatMessage(std::vector<int>* MsgsList);
 	bool IsAdmin();
 	unsigned int GetActiveUsers();
@@ -76,25 +95,39 @@ private:
 	int PacketReadInteger(char* pData, int* pReadCount);
 	char* PacketReadString(char* pData, int iStrLength, int* pReadCount);
 	char* PacketReadNetString(char* pData, int* pReadCount, int* pStrLength = nullptr);
+
 	void PacketWriteChar(char* pData, int* pWriteCount, char cValue);
 	void PacketWriteInteger(char* pData, int* pWriteCount, int iValue);
 	void PacketWriteString(char* pData, int* pWriteCount, char* szValue, int iValueLength);
 	void PacketWriteData(char* pData, int* pWriteCount, char* szValue, int iValueLength);
 	void PacketWriteNetString(char* pData, int* pWriteCount, char* szValue, int iValueLength);
+
 	bool IsValidStrMessage(char* szString, int iStringLength);
-	bool SendChatMessageToHost(char* szMessage);
-	bool SendChatMessageToClient(char* szUsername, char* szMessage, unsigned int iMessageOwnerID, int iMessageID = UNTRACKED_MESSAGE, bool bMessageIsImportant = true, std::vector<unsigned int>* IDList = nullptr);
-	bool SendNewChatMessageToClient(char* szUsername, char* szMessage, unsigned int iMessageOwnerID, std::vector<unsigned int>* IDList = nullptr);
+
+	void IncreaseMessagesCounter();
+
+	chat_packet_data_t CreateNetMsg(MSG_TYPE MsgType, char* szMessage, int iMessageSize);
+
+	chat_packet_data_t CreateClientChatMessage(char* szUsername, char* szMessage, unsigned int iMessageOwnerID, int iMessageID, bool bMessageIsImportant = true);
+	bool SendHostChatMessage(char* szMessage);
+	
 	int CalcNetData(int iValueLength);
 	int CalcNetString(int iValueLength);
-	MSG_TYPE PacketReadMsgType(char* pData, int* pReadCount);
-	bool SendNetMsg(MSG_TYPE MsgType, char* szAuthor, int iMessageSize, std::vector<unsigned int>* IDList = nullptr);
-	bool SendLocalMsg(char* szAuthor, char* szMessage, int iMessageID);
+
 	MSG_TYPE GetMsgType(char* szMsg);
 	const char* GetStrMsgType(MSG_TYPE MsgType);
+	MSG_TYPE PacketReadMsgType(char* pData, int* pReadCount);
+	
+	void SendNetMsg(chat_packet_data_t& chat_packet_data);
+	void SendNetMsg(chat_packet_data_t& chat_packet_data, unsigned int iConnectionID);
+	void SendNetMsg(chat_packet_data_t& chat_packet_data, CNetworkTCP::NETSOCK Socket);
+	bool SendLocalMsg(char* szAuthor, char* szMessage, int iMessageID);
+
 	bool GrantAdmin(char* szLogin, char* szPassword, unsigned int iConnectionID);
-	bool SendStatusAdmin(unsigned int ID, bool IsGranted);
-	CNetworkTCP* GetNetwork();
+	void SendStatusAdmin(unsigned int iConnectionID, bool IsGranted);
+	
 	chat_user* GetUser(unsigned int ID);
+
+	CNetworkTCP* GetNetwork();
 };
 

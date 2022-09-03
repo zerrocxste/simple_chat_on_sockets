@@ -30,35 +30,39 @@ using NotificationCallbackUserDataPtr = void*;
 using f_ClientConnectionNotification = bool(*)(bool bIsPreConnectionStep, unsigned int iConnectionCount, int iIp, char* szIP, int iPort, NotificationCallbackUserDataPtr pUserData);
 using f_ClientDisconnectionNotification = bool(*)(unsigned int iConnectionCount, NotificationCallbackUserDataPtr pUserData);
 
-struct client_receive_data_thread_t
-{
-	SOCKET m_ConnectionSocket;
-	unsigned int m_iThreadId;
-	SOCKADDR_IN m_SockAddrIn;
-};
-
-struct host_receive_thread_arg_t
-{
-	CNetworkTCP* m_Network;
-	client_receive_data_thread_t* m_CurrentClient;
-};
-
-struct delta_packet_t
-{
-	short magic;
-	unsigned short m_iPacketSize;
-};
-
 class CNetworkTCP : public IError
 {
+public:
+	using NETSOCK = SOCKET;
+	using NETSOCKADDR_IN = sockaddr_in;
+
 private:
+	struct delta_packet_t
+	{
+		short magic;
+		unsigned short m_iPacketSize;
+	};
+
 	static const int iDeltaPacketLength = sizeof(delta_packet_t);
-	int m_iSockAddrInLength = sizeof(SOCKADDR_IN);
+	int m_iSockAddrInLength = sizeof(NETSOCKADDR_IN);
 
 #ifdef _WIN32
 	static int g_iCreatedLinkCount;
 	static WSADATA g_WSAdata;
 #endif // _WIN32
+
+	struct client_receive_data_thread_t
+	{
+		CNetworkTCP::NETSOCK m_ConnectionSocket;
+		unsigned int m_iConnectionID;
+		NETSOCKADDR_IN m_SockAddrIn;
+	};
+
+	struct host_receive_thread_arg_t
+	{
+		CNetworkTCP* m_Network;
+		client_receive_data_thread_t* m_CurrentClient;
+	};
 
 	template <class T> __forceinline static bool ThreadCreate(T* pfunc, void* arg) noexcept
 	{
@@ -73,11 +77,11 @@ private:
 
 	bool m_bIsInitialized;
 	bool m_bIsHost;
-	int m_iMaxProcessedUsersNumber;
+	unsigned int m_iMaxProcessedUsersNumber;
 	char* m_pszIP;
 	int m_IPort;
-	SOCKADDR_IN m_SockAddrIn;
-	SOCKET m_Socket;
+	NETSOCKADDR_IN m_SockAddrIn;
+	NETSOCK m_Socket;
 	std::map<unsigned int, client_receive_data_thread_t> m_ClientsList;
 	unsigned int m_iConnectionCount;
 	std::vector<net_packet_t> m_PacketsList;
@@ -94,27 +98,28 @@ private:
 	bool InitializeAsClient();
 	void AddToPacketList(net_packet_t NetPacket);
 	bool InvokeClientConnectionNotification(bool bIsPreConnectionStep, int iConnectionCount, int iIP, char* szIP, int iPort);
-	bool InvokeClientDisconnectionNotification(int iConnectionCount);
-	bool SendToSocket(SOCKET Socket, void* pPacket, int iSize);
+	bool InvokeClientDisconnectionNotification(unsigned int iConnectionCount);
 	bool ReceivePacket(net_packet_t* pPacket);
 	void ShutdownNetwork();
 	void DropConnections();
 	void DisconnectSocket(SOCKET Socket);
 	void DisconnectClient(client_receive_data_thread_t* Client);
 public:
-	CNetworkTCP(bool IsHost, char* pszIP, int iPort, int iMaxProcessedUsersNumber);
+	CNetworkTCP(bool IsHost, char* pszIP, int iPort, unsigned int iMaxProcessedUsersNumber);
 	~CNetworkTCP();
 
 	bool Startup();
-	bool SendPacketAll(void* pPacket, int iSize);
-	bool SendPacketExcludeID(void* pPacket, int iSize, std::vector<unsigned int>* vIDList);
-	bool SendPacketIncludeID(void* pPacket, int iSize, std::vector<unsigned int>* vIDList);
+	void SendToSocket(void* pPacket, int iSize, const CNetworkTCP::NETSOCK Socket);
+	void SendPacket(void* pPacket, int iSize);
+	void SendPacket(void* pPacket, int iSize, const unsigned int iConnectionID);
+	void SendPacket(void* pPacket, int iSize, void* pUserData, bool(*pfSortingDelegate)(void* pUserData, unsigned int iConnectionID));
 	bool GetReceivedData(net_packet_t* pPacket);
+	CNetworkTCP::NETSOCK GetSocketFromConnectionID(unsigned int iConnectionID);
 	bool ServerWasDowned();
 	bool IsHost();
 	unsigned int GetConnectedUsersCount();
-	void DisconnectUser(int IdCount);
-	bool GetIpByClientId(int IdCount, int* pIP);
+	void DisconnectUser(unsigned int iConnectionID);
+	bool GetIpByClientId(unsigned int iConnectionID, int* pIP);
 	char* GetStrIpFromSockAddrIn(PSOCKADDR_IN pSockAddrIn);
 	int GetIntegerIpFromSockAddrIn(PSOCKADDR_IN pSockAddrIn);
 	int GetPortFromSockAddrIn(PSOCKADDR_IN pSockAddrIn);
