@@ -15,7 +15,7 @@ CChatData::~CChatData()
 	CleanupData();
 }
 
-bool CChatData::SendNewMessage(char* szUsername, char* szMessage, unsigned int iMessageOwnerID, int iMessageCount, bool IsMessageImportant, std::size_t UsernameSize, std::size_t MessageSize)
+bool CChatData::SendNewMessage(char* szUsername, char* szMessage, netconnectcount iMessageOwnerID, int iMessageCount, bool IsMessageImportant, std::size_t UsernameSize, std::size_t MessageSize)
 {
 	if (!szUsername || !szMessage)
 		return false;
@@ -90,7 +90,7 @@ pMessage CChatData::AllocateNewMessagePointer(std::size_t SizeUsername, std::siz
 	return this->m_ppMessagesArray[this->m_mMessagesArraySize];
 }
 
-void CChatData::AddMessage(char* szUsername, std::size_t UsernameSize, char* szMessage, std::size_t MessageSize, unsigned int iMessageOwnerID, int iMessageCount, bool IsMessageImportant, pMessage Message)
+void CChatData::AddMessage(char* szUsername, std::size_t UsernameSize, char* szMessage, std::size_t MessageSize, netconnectcount iMessageOwnerID, int iMessageCount, bool IsMessageImportant, pMessage Message)
 {
 	Message->m_iMessageOwnerID = iMessageOwnerID;
 	Message->m_bMessageIsImportant = IsMessageImportant;

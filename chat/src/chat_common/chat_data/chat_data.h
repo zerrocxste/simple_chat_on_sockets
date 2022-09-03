@@ -1,6 +1,6 @@
 struct Message
 {
-	unsigned int m_iMessageOwnerID;
+	netconnectcount m_iMessageOwnerID;
 	bool m_bMessageIsImportant;
 	int m_iMessageID;
 	char* m_szUsername;
@@ -76,7 +76,7 @@ public:
 	CChatData();
 	~CChatData();
 
-	bool SendNewMessage(char* szUsername, char* szMessage, unsigned int iMessageOwnerID, int iMessageCount = UNTRACKED_MESSAGE, bool IsMessageImportant = true, std::size_t UsernameSize = 0, std::size_t MessageSize = 0);
+	bool SendNewMessage(char* szUsername, char* szMessage, netconnectcount iMessageOwnerID, int iMessageCount = UNTRACKED_MESSAGE, bool IsMessageImportant = true, std::size_t UsernameSize = 0, std::size_t MessageSize = 0);
 	ppArrayMessages GetChat();
 	std::size_t GetMessagesArraySize();
 	void CleanupData();
@@ -89,7 +89,7 @@ public:
 private:
 	std::uint8_t GetPointerSize();
 	pMessage AllocateNewMessagePointer(std::size_t SizeUsername, std::size_t SizeMessage);
-	void AddMessage(char* szUsername, std::size_t UsernameSize, char* szMessage, std::size_t MessageSize, unsigned int iMessageOwnerID, int iMessageCount, bool IsMessageImportant, pMessage Message);
+	void AddMessage(char* szUsername, std::size_t UsernameSize, char* szMessage, std::size_t MessageSize, netconnectcount iMessageOwnerID, int iMessageCount, bool IsMessageImportant, pMessage Message);
 	void IncreaseMessagesCounter();
 
 	ppArrayMessages m_ppMessagesArray;

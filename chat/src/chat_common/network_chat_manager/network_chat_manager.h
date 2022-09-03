@@ -42,53 +42,53 @@ private:
 class CNetworkChatManager
 {
 public:
-	CNetworkChatManager(bool IsHost, char* szUsername, char* pszIP, int iPort, int iMaxProcessedUsersNumber);
+	CNetworkChatManager(bool IsHost, char* szUsername, char* pszIP, int iPort, netconnectcount iMaxProcessedUsersNumber);
 	~CNetworkChatManager();
 
 	bool Initialize();
 	void Shutdown();
 	void ReceivePacketsRoutine();
-	void ReceiveSendChatToHost(int& iReadCount, chat_user* User, unsigned int iConnectionID, char* pData, int iDataSize);
-	void ReceiveSendChatToClient(int& iReadCount, chat_user* User, unsigned int iConnectionID, char* pData, int iDataSize);
-	void ReceiveAdminRequest(int& iReadCount, chat_user* User, unsigned int iConnectionID, char* pData, int iDataSize);
-	void ReceiveAdminStatus(int& iReadCount, chat_user* User, unsigned int iConnectionID, char* pData, int iDataSize);
-	void ReceiveConnected(int& iReadCount, chat_user* User, unsigned int iConnectionID, char* pData, int iDataSize);
-	void ReceiveClientChatUserID(int& iReadCount, chat_user* User, unsigned int iConnectionID, char* pData, int iDataSize);
-	void ReceiveDelete(int& iReadCount, chat_user* User, unsigned int iConnectionID, char* pData, int iDataSize);
-	void ReceiveOnlineList(int& iReadCount, chat_user* User, unsigned int iConnectionID, char* pData, int iDataSize);
+	void ReceiveSendChatToHost(int& iReadCount, chat_user* User, netconnectcount iConnectionID, char* pData, int iDataSize);
+	void ReceiveSendChatToClient(int& iReadCount, chat_user* User, netconnectcount iConnectionID, char* pData, int iDataSize);
+	void ReceiveAdminRequest(int& iReadCount, chat_user* User, netconnectcount iConnectionID, char* pData, int iDataSize);
+	void ReceiveAdminStatus(int& iReadCount, chat_user* User, netconnectcount iConnectionID, char* pData, int iDataSize);
+	void ReceiveConnected(int& iReadCount, chat_user* User, netconnectcount iConnectionID, char* pData, int iDataSize);
+	void ReceiveClientChatUserID(int& iReadCount, chat_user* User, netconnectcount iConnectionID, char* pData, int iDataSize);
+	void ReceiveDelete(int& iReadCount, chat_user* User, netconnectcount iConnectionID, char* pData, int iDataSize);
+	void ReceiveOnlineList(int& iReadCount, chat_user* User, netconnectcount iConnectionID, char* pData, int iDataSize);
 	void SendChatMessage(char* szMessage);
 	size_t GetChatArraySize();
 	bool IsNeedExit();
 	bool IsHost();
-	void AddUser(unsigned int ID, int IP, int Port);
-	void ResendLastMessagesToClient(unsigned int iConnectionID, int iNumberToResend);
-	bool DisconnectUser(unsigned int iConnectionID);
+	void AddUser(netconnectcount iConnectionID, int IP, int Port);
+	void ResendLastMessagesToClient(netconnectcount iConnectionID, int iNumberToResend);
+	bool DisconnectUser(netconnectcount iConnectionID);
 	bool RequestAdmin(char* szLogin, char* szPassword);
-	void SendConnectedMessage(unsigned int iConnectionID = 0);
+	void SendConnectedMessage(netconnectcount iConnectionID = 0);
 	bool DeleteChatMessage(std::vector<int>* MsgsList);
 	bool IsAdmin();
-	unsigned int GetActiveUsers();
+	netconnectcount GetActiveUsers();
 	void SendActiveUsersToClients();
 	CChatData* GetChatData();
-	unsigned int GetClientConnectionID();
+	netconnectcount GetClientConnectionID();
 
-	static bool OnConnectionNotification(bool bIsPreConnectionStep, unsigned int iConnectionCount, int iIp, char* szIP, int iPort, NotificationCallbackUserDataPtr pUserData);
-	static bool OnDisconnectionNotification(unsigned int iConnectionCount, NotificationCallbackUserDataPtr pUserData);
+	static bool OnConnectionNotification(bool bIsPreConnectionStep, netconnectcount iConnectionID, int iIp, char* szIP, int iPort, NotificationCallbackUserDataPtr pUserData);
+	static bool OnDisconnectionNotification(netconnectcount iConnectionID, NotificationCallbackUserDataPtr pUserData);
 private:
 	bool m_bIsInitialized;
 	bool m_bIsHost;
 	bool m_bIsAdmin;
 	bool m_bNeedExit;
-	unsigned int m_iClientConnectionID;
-	unsigned int m_iUsersConnectedToHost;
-	unsigned int m_iUsersConnectedToHostPrevFrame;
-	int m_iMaxProcessedUsersNumber;
+	netconnectcount m_iClientConnectionID;
+	netconnectcount m_iUsersConnectedToHost;
+	netconnectcount m_iUsersConnectedToHostPrevFrame;
+	netconnectcount m_iMaxProcessedUsersNumber;
 	int m_iMessageCount;
 	CNetworkTCP* m_pNetwork;
 	CChatData* m_pChatData;
 	char m_szUsername[32];
 	int m_iUsernameLength;
-	std::map<unsigned int, chat_user> m_vUsersList;
+	std::map<netconnectcount, chat_user> m_vUsersList;
 	std::mutex m_mtxChatData;
 
 	char PacketReadChar(char* pData, int* pReadCount);
@@ -108,7 +108,7 @@ private:
 
 	chat_packet_data_t CreateNetMsg(MSG_TYPE MsgType, char* szMessage, int iMessageSize);
 
-	chat_packet_data_t CreateClientChatMessage(char* szUsername, char* szMessage, unsigned int iMessageOwnerID, int iMessageID, bool bMessageIsImportant = true);
+	chat_packet_data_t CreateClientChatMessage(char* szUsername, char* szMessage, netconnectcount iMessageOwnerID, int iMessageID, bool bMessageIsImportant = true);
 	bool SendHostChatMessage(char* szMessage);
 	
 	int CalcNetData(int iValueLength);
@@ -119,14 +119,13 @@ private:
 	MSG_TYPE PacketReadMsgType(char* pData, int* pReadCount);
 	
 	void SendNetMsg(chat_packet_data_t& chat_packet_data);
-	void SendNetMsg(chat_packet_data_t& chat_packet_data, unsigned int iConnectionID);
-	void SendNetMsg(chat_packet_data_t& chat_packet_data, CNetworkTCP::NETSOCK Socket);
-	bool SendLocalMsg(char* szAuthor, char* szMessage, int iMessageID);
+	void SendNetMsgToID(chat_packet_data_t& chat_packet_data, netconnectcount iConnectionID);
+	void SendNetMsgToSocket(chat_packet_data_t& chat_packet_data, CNetworkTCP::NETSOCK Socket);
 
-	bool GrantAdmin(char* szLogin, char* szPassword, unsigned int iConnectionID);
-	void SendStatusAdmin(unsigned int iConnectionID, bool IsGranted);
+	bool GrantAdmin(char* szLogin, char* szPassword, netconnectcount iConnectionID);
+	void SendStatusAdmin(netconnectcount iConnectionID, bool IsGranted);
 	
-	chat_user* GetUser(unsigned int ID);
+	chat_user* GetUser(netconnectcount iConnectionID);
 
 	CNetworkTCP* GetNetwork();
 };

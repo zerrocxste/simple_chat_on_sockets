@@ -1,4 +1,6 @@
-constexpr auto CLIENT_SOCKET = 0;
+using netconnectcount = unsigned int;
+
+constexpr netconnectcount CLIENT_SOCKET = 0;
 
 struct net_packet_t
 {
@@ -10,7 +12,7 @@ struct net_packet_t
 
 	};
 
-	net_packet_t(void* pPacket, int iSize, int iConnectionID) :
+	net_packet_t(void* pPacket, int iSize, netconnectcount iConnectionID) :
 		m_pPacket(pPacket),
 		m_iSize(iSize),
 		m_iConnectionID(iConnectionID)
@@ -20,21 +22,26 @@ struct net_packet_t
 
 	void* m_pPacket;
 	int m_iSize;
-	int m_iConnectionID;
+	netconnectcount m_iConnectionID;
 };
 
 class CNetworkTCP;
 
 using NotificationCallbackUserDataPtr = void*;
 
-using f_ClientConnectionNotification = bool(*)(bool bIsPreConnectionStep, unsigned int iConnectionCount, int iIp, char* szIP, int iPort, NotificationCallbackUserDataPtr pUserData);
-using f_ClientDisconnectionNotification = bool(*)(unsigned int iConnectionCount, NotificationCallbackUserDataPtr pUserData);
+using f_ClientConnectionNotification = bool(*)(bool bIsPreConnectionStep, netconnectcount iConnectionID, int iIp, char* szIP, int iPort, NotificationCallbackUserDataPtr pUserData);
+using f_ClientDisconnectionNotification = bool(*)(netconnectcount iConnectionID, NotificationCallbackUserDataPtr pUserData);
 
 class CNetworkTCP : public IError
 {
 public:
 	using NETSOCK = SOCKET;
+
+#ifdef _WIN32
+	using NETSOCKADDR_IN = SOCKADDR_IN;
+#else
 	using NETSOCKADDR_IN = sockaddr_in;
+#endif // _WIN32
 
 private:
 	struct delta_packet_t
@@ -54,7 +61,7 @@ private:
 	struct client_receive_data_thread_t
 	{
 		CNetworkTCP::NETSOCK m_ConnectionSocket;
-		unsigned int m_iConnectionID;
+		netconnectcount m_iConnectionID;
 		NETSOCKADDR_IN m_SockAddrIn;
 	};
 
@@ -77,13 +84,13 @@ private:
 
 	bool m_bIsInitialized;
 	bool m_bIsHost;
-	unsigned int m_iMaxProcessedUsersNumber;
+	netconnectcount m_iMaxProcessedUsersNumber;
 	char* m_pszIP;
 	int m_IPort;
 	NETSOCKADDR_IN m_SockAddrIn;
 	NETSOCK m_Socket;
-	std::map<unsigned int, client_receive_data_thread_t> m_ClientsList;
-	unsigned int m_iConnectionCount;
+	std::map<netconnectcount, client_receive_data_thread_t> m_ClientsList;
+	netconnectcount m_iConnectionCount;
 	std::vector<net_packet_t> m_PacketsList;
 	bool m_bServerWasDowned;
 	f_ClientConnectionNotification m_pf_ClientConnectionNotificationCallback;
@@ -97,29 +104,29 @@ private:
 	bool InitializeAsHost();
 	bool InitializeAsClient();
 	void AddToPacketList(net_packet_t NetPacket);
-	bool InvokeClientConnectionNotification(bool bIsPreConnectionStep, int iConnectionCount, int iIP, char* szIP, int iPort);
-	bool InvokeClientDisconnectionNotification(unsigned int iConnectionCount);
+	bool InvokeClientConnectionNotification(bool bIsPreConnectionStep, netconnectcount iConnectionID, int iIP, char* szIP, int iPort);
+	bool InvokeClientDisconnectionNotification(netconnectcount iConnectionID);
 	bool ReceivePacket(net_packet_t* pPacket);
 	void ShutdownNetwork();
 	void DropConnections();
 	void DisconnectSocket(SOCKET Socket);
 	void DisconnectClient(client_receive_data_thread_t* Client);
 public:
-	CNetworkTCP(bool IsHost, char* pszIP, int iPort, unsigned int iMaxProcessedUsersNumber);
+	CNetworkTCP(bool IsHost, char* pszIP, int iPort, netconnectcount iMaxProcessedUsersNumber);
 	~CNetworkTCP();
 
 	bool Startup();
 	void SendToSocket(void* pPacket, int iSize, const CNetworkTCP::NETSOCK Socket);
 	void SendPacket(void* pPacket, int iSize);
-	void SendPacket(void* pPacket, int iSize, const unsigned int iConnectionID);
-	void SendPacket(void* pPacket, int iSize, void* pUserData, bool(*pfSortingDelegate)(void* pUserData, unsigned int iConnectionID));
+	void SendPacket(void* pPacket, int iSize, const netconnectcount iConnectionID);
+	void SendPacket(void* pPacket, int iSize, void* pUserData, bool(*pfSortingDelegate)(void* pUserData, netconnectcount iConnectionID));
 	bool GetReceivedData(net_packet_t* pPacket);
-	CNetworkTCP::NETSOCK GetSocketFromConnectionID(unsigned int iConnectionID);
+	CNetworkTCP::NETSOCK GetSocketFromConnectionID(netconnectcount iConnectionID);
 	bool ServerWasDowned();
 	bool IsHost();
-	unsigned int GetConnectedUsersCount();
-	void DisconnectUser(unsigned int iConnectionID);
-	bool GetIpByClientId(unsigned int iConnectionID, int* pIP);
+	netconnectcount GetConnectedUsersCount();
+	void DisconnectUser(netconnectcount iConnectionID);
+	bool GetIpByClientId(netconnectcount iConnectionID, int* pIP);
 	char* GetStrIpFromSockAddrIn(PSOCKADDR_IN pSockAddrIn);
 	int GetIntegerIpFromSockAddrIn(PSOCKADDR_IN pSockAddrIn);
 	int GetPortFromSockAddrIn(PSOCKADDR_IN pSockAddrIn);

@@ -59,7 +59,7 @@ constexpr auto ONLINE_LIST_MSG = "ONLINE_LIST_MSG";
 constexpr auto ADMIN_GRANTED = "Admin access granted!";
 constexpr auto ADMIN_NOT_GRANTED = "Login or password is incorrect";
 
-bool CNetworkChatManager::OnConnectionNotification(bool bIsPreConnectionStep, unsigned int iConnectionID, int iIp, char* szIP, int iPort, NotificationCallbackUserDataPtr pUserData)
+bool CNetworkChatManager::OnConnectionNotification(bool bIsPreConnectionStep, netconnectcount iConnectionID, int iIp, char* szIP, int iPort, NotificationCallbackUserDataPtr pUserData)
 {
 	auto pNetworkChatManager = (CNetworkChatManager*)pUserData;
 
@@ -76,7 +76,7 @@ bool CNetworkChatManager::OnConnectionNotification(bool bIsPreConnectionStep, un
 	return true;
 }
 
-bool CNetworkChatManager::OnDisconnectionNotification(unsigned int iConnectionID, NotificationCallbackUserDataPtr pUserData)
+bool CNetworkChatManager::OnDisconnectionNotification(netconnectcount iConnectionID, NotificationCallbackUserDataPtr pUserData)
 {
 	auto pNetworkChatManager = (CNetworkChatManager*)pUserData;
 
@@ -85,7 +85,7 @@ bool CNetworkChatManager::OnDisconnectionNotification(unsigned int iConnectionID
 	return pNetworkChatManager->DisconnectUser(iConnectionID);
 }
 
-CNetworkChatManager::CNetworkChatManager(bool IsHost, char* szUsername, char* pszIP, int iPort, int iMaxProcessedUsersNumber) :
+CNetworkChatManager::CNetworkChatManager(bool IsHost, char* szUsername, char* pszIP, int iPort, netconnectcount iMaxProcessedUsersNumber) :
 	m_bIsInitialized(false),
 	m_bIsHost(IsHost),
 	m_bIsAdmin(false),
@@ -212,7 +212,7 @@ void CNetworkChatManager::ReceivePacketsRoutine()
 	}
 }
 
-void CNetworkChatManager::ReceiveSendChatToHost(int& iReadCount, chat_user* User, unsigned int iConnectionID, char* pData, int iDataSize)
+void CNetworkChatManager::ReceiveSendChatToHost(int& iReadCount, chat_user* User, netconnectcount iConnectionID, char* pData, int iDataSize)
 {
 	auto iMessageLength = 0;
 	auto szMessage = PacketReadNetString(pData, &iReadCount, &iMessageLength);
@@ -235,7 +235,7 @@ void CNetworkChatManager::ReceiveSendChatToHost(int& iReadCount, chat_user* User
 	IncreaseMessagesCounter();
 }
 
-void CNetworkChatManager::ReceiveSendChatToClient(int& iReadCount, chat_user* User, unsigned int iConnectionID, char* pData, int iDataSize)
+void CNetworkChatManager::ReceiveSendChatToClient(int& iReadCount, chat_user* User, netconnectcount iConnectionID, char* pData, int iDataSize)
 {
 	auto iUsernameLength = 0;
 	auto szUsername = PacketReadNetString(pData, &iReadCount, &iUsernameLength);
@@ -266,7 +266,7 @@ void CNetworkChatManager::ReceiveSendChatToClient(int& iReadCount, chat_user* Us
 	GetChatData()->SendNewMessage(szUsername, szMessage, iMessageOwnerID, iMessageCount, IsMessageImportant);
 }
 
-void CNetworkChatManager::ReceiveAdminRequest(int& iReadCount, chat_user* User, unsigned int iConnectionID, char* pData, int iDataSize)
+void CNetworkChatManager::ReceiveAdminRequest(int& iReadCount, chat_user* User, netconnectcount iConnectionID, char* pData, int iDataSize)
 {
 	if (!IsHost())
 		return;
@@ -290,7 +290,7 @@ void CNetworkChatManager::ReceiveAdminRequest(int& iReadCount, chat_user* User, 
 	SendStatusAdmin(iConnectionID, IsGranted);
 }
 
-void CNetworkChatManager::ReceiveAdminStatus(int& iReadCount, chat_user* User, unsigned int iConnectionID, char* pData, int iDataSize)
+void CNetworkChatManager::ReceiveAdminStatus(int& iReadCount, chat_user* User, netconnectcount iConnectionID, char* pData, int iDataSize)
 {
 	if (IsHost())
 		return;
@@ -315,7 +315,7 @@ void CNetworkChatManager::ReceiveAdminStatus(int& iReadCount, chat_user* User, u
 	GetChatData()->SendNewMessage((char*)"SYSTEM", szMessage, 0);
 }
 
-void CNetworkChatManager::ReceiveConnected(int& iReadCount, chat_user* User, unsigned int iConnectionID, char* pData, int iDataSize)
+void CNetworkChatManager::ReceiveConnected(int& iReadCount, chat_user* User, netconnectcount iConnectionID, char* pData, int iDataSize)
 {
 	auto iUsernameLength = 0;
 	auto szUsername = PacketReadNetString(pData, &iReadCount, &iUsernameLength);
@@ -347,19 +347,19 @@ void CNetworkChatManager::ReceiveConnected(int& iReadCount, chat_user* User, uns
 
 		if (NetMsg)
 		{
-			SendNetMsg(NetMsg, iConnectionID);
+			SendNetMsgToID(NetMsg, iConnectionID);
 			ResendLastMessagesToClient(iConnectionID, 250);
 		}
 	}
 }
 
-void CNetworkChatManager::ReceiveClientChatUserID(int& iReadCount, chat_user* User, unsigned int iConnectionID, char* pData, int iDataSize)
+void CNetworkChatManager::ReceiveClientChatUserID(int& iReadCount, chat_user* User, netconnectcount iConnectionID, char* pData, int iDataSize)
 {
 	this->m_iClientConnectionID = PacketReadInteger(pData, &iReadCount);
 	TRACE_FUNC("Received connection ID from host: %d\n", this->m_iClientConnectionID);
 }
 
-void CNetworkChatManager::ReceiveDelete(int& iReadCount, chat_user* User, unsigned int iConnectionID, char* pData, int iDataSize)
+void CNetworkChatManager::ReceiveDelete(int& iReadCount, chat_user* User, netconnectcount iConnectionID, char* pData, int iDataSize)
 {
 	if (IsHost() && !User->m_bIsAdmin)
 	{
@@ -384,7 +384,7 @@ void CNetworkChatManager::ReceiveDelete(int& iReadCount, chat_user* User, unsign
 		GetNetwork()->SendPacket(pData, iDataSize);
 }
 
-void CNetworkChatManager::ReceiveOnlineList(int& iReadCount, chat_user* User, unsigned int iConnectionID, char* pData, int iDataSize)
+void CNetworkChatManager::ReceiveOnlineList(int& iReadCount, chat_user* User, netconnectcount iConnectionID, char* pData, int iDataSize)
 {
 	if (IsHost())
 		return;
@@ -426,17 +426,17 @@ bool CNetworkChatManager::IsHost()
 	return GetNetwork()->IsHost() && this->m_bIsHost;
 }
 
-void CNetworkChatManager::AddUser(unsigned int ID, int IP, int iPort)
+void CNetworkChatManager::AddUser(netconnectcount iConnectionID, int IP, int iPort)
 {
 	chat_user user{};
 	user.m_bConnected = true;
 	user.m_IP = IP;
 	user.m_iPort = iPort;
 	user.m_bIsAdmin = false;
-	this->m_vUsersList[ID] = user;
+	this->m_vUsersList[iConnectionID] = user;
 }
 
-void CNetworkChatManager::ResendLastMessagesToClient(unsigned int iConnectionID, int iNumberToResend)
+void CNetworkChatManager::ResendLastMessagesToClient(netconnectcount iConnectionID, int iNumberToResend)
 {
 	TRACE_FUNC("Resend last %d messages for ID: %d\n", iNumberToResend, iConnectionID);
 
@@ -460,11 +460,11 @@ void CNetworkChatManager::ResendLastMessagesToClient(unsigned int iConnectionID,
 		if (!ChatMsg)
 			continue;
 
-		SendNetMsg(ChatMsg, Socket);
+		SendNetMsgToSocket(ChatMsg, Socket);
 	}
 }
 
-bool CNetworkChatManager::DisconnectUser(unsigned int iConnectionID)
+bool CNetworkChatManager::DisconnectUser(netconnectcount iConnectionID)
 {
 	auto User = GetUser(iConnectionID);
 
@@ -508,7 +508,7 @@ bool CNetworkChatManager::RequestAdmin(char* szLogin, char* szPassword)
 	return true;
 }
 
-void CNetworkChatManager::SendConnectedMessage(unsigned int iConnectionID)
+void CNetworkChatManager::SendConnectedMessage(netconnectcount iConnectionID)
 {
 	auto iUsernameLength = strlen(this->m_szUsername);
 
@@ -523,7 +523,7 @@ void CNetworkChatManager::SendConnectedMessage(unsigned int iConnectionID)
 	auto NetMsg = CreateNetMsg(MSG_TYPE::MSG_CONNECTED, buff, MsgSize);
 
 	if (NetMsg)
-		SendNetMsg(NetMsg, iConnectionID);
+		SendNetMsgToID(NetMsg, iConnectionID);
 
 	delete[] buff;
 }
@@ -564,7 +564,7 @@ bool CNetworkChatManager::IsAdmin()
 	return this->m_bIsAdmin;
 }
 
-unsigned int CNetworkChatManager::GetActiveUsers()
+netconnectcount CNetworkChatManager::GetActiveUsers()
 {
 	if (IsHost())
 		return this->m_pNetwork->GetConnectedUsersCount();
@@ -603,7 +603,7 @@ CChatData* CNetworkChatManager::GetChatData()
 	return ret;
 }
 
-unsigned int CNetworkChatManager::GetClientConnectionID()
+netconnectcount CNetworkChatManager::GetClientConnectionID()
 {
 	return this->m_iClientConnectionID;
 }
@@ -710,7 +710,7 @@ chat_packet_data_t CNetworkChatManager::CreateNetMsg(MSG_TYPE MsgType, char* szM
 	return ChatPacket;
 }
 
-chat_packet_data_t CNetworkChatManager::CreateClientChatMessage(char* szUsername, char* szMessage, unsigned int iMessageOwnerID, int iMessageID, bool bMessageIsImportant)
+chat_packet_data_t CNetworkChatManager::CreateClientChatMessage(char* szUsername, char* szMessage, netconnectcount iMessageOwnerID, int iMessageID, bool bMessageIsImportant)
 {
 	auto iUsernameLength = strlen(szUsername);
 	auto iMessageLength = strlen(szMessage);
@@ -718,7 +718,7 @@ chat_packet_data_t CNetworkChatManager::CreateClientChatMessage(char* szUsername
 	if (!iUsernameLength || !iMessageLength)
 		return chat_packet_data_t();
 
-	int MsgSize = CalcNetString(iUsernameLength) + CalcNetString(iMessageLength) + sizeof(int) + sizeof(bool) + sizeof(unsigned int);
+	int MsgSize = CalcNetString(iUsernameLength) + CalcNetString(iMessageLength) + sizeof(int) + sizeof(bool) + sizeof(netconnectcount);
 
 	char* buff = new char[MsgSize]();
 
@@ -832,22 +832,17 @@ void CNetworkChatManager::SendNetMsg(chat_packet_data_t& chat_packet_data)
 	GetNetwork()->SendPacket(chat_packet_data.m_pPacket, chat_packet_data.m_iMessageLength);
 }
 
-void CNetworkChatManager::SendNetMsg(chat_packet_data_t& chat_packet_data, unsigned int iConnectionID)
+void CNetworkChatManager::SendNetMsgToID(chat_packet_data_t& chat_packet_data, netconnectcount iConnectionID)
 {
 	GetNetwork()->SendPacket(chat_packet_data.m_pPacket, chat_packet_data.m_iMessageLength, iConnectionID);
 }
 
-void CNetworkChatManager::SendNetMsg(chat_packet_data_t& chat_packet_data, CNetworkTCP::NETSOCK Socket)
+void CNetworkChatManager::SendNetMsgToSocket(chat_packet_data_t& chat_packet_data, CNetworkTCP::NETSOCK Socket)
 {
 	GetNetwork()->SendToSocket(chat_packet_data.m_pPacket, chat_packet_data.m_iMessageLength, Socket);
 }
 
-bool CNetworkChatManager::SendLocalMsg(char* szAuthor, char* szMessage, int iMessageID)
-{
-	return GetChatData()->SendNewMessage(szAuthor, szMessage, this->m_iClientConnectionID, iMessageID);
-}
-
-bool CNetworkChatManager::GrantAdmin(char* szLogin, char* szPassword, unsigned int iConnectionID)
+bool CNetworkChatManager::GrantAdmin(char* szLogin, char* szPassword, netconnectcount iConnectionID)
 {
 	const char* AdminLoginPasswordList[][2] = {
 		{ "TestAdmin1", "TestAdmin1Password" },
@@ -873,7 +868,7 @@ bool CNetworkChatManager::GrantAdmin(char* szLogin, char* szPassword, unsigned i
 	return false;
 }
 
-void CNetworkChatManager::SendStatusAdmin(unsigned int iConnectionID, bool IsGranted)
+void CNetworkChatManager::SendStatusAdmin(netconnectcount iConnectionID, bool IsGranted)
 {
 	auto Status = IsGranted ? (char*)ADMIN_GRANTED : (char*)ADMIN_NOT_GRANTED;
 
@@ -890,14 +885,14 @@ void CNetworkChatManager::SendStatusAdmin(unsigned int iConnectionID, bool IsGra
 	auto NetMsg = CreateNetMsg(MSG_TYPE::MSG_ADMIN_STATUS, buff, MsgSize);
 
 	if (NetMsg)
-		SendNetMsg(NetMsg, iConnectionID);
+		SendNetMsgToID(NetMsg, iConnectionID);
 
 	delete[] buff;
 }
 
-chat_user* CNetworkChatManager::GetUser(unsigned int ID)
+chat_user* CNetworkChatManager::GetUser(netconnectcount iConnectionID)
 {
-	return &this->m_vUsersList[ID];
+	return &this->m_vUsersList[iConnectionID];
 }
 
 CNetworkTCP* CNetworkChatManager::GetNetwork()

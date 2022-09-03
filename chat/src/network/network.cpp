@@ -10,7 +10,7 @@ int CNetworkTCP::g_iCreatedLinkCount = 0;
 WSADATA CNetworkTCP::g_WSAdata{};
 #endif
 
-CNetworkTCP::CNetworkTCP(bool IsHost, char* pszIP, int iPort, unsigned int iMaxProcessedUsersNumber) :
+CNetworkTCP::CNetworkTCP(bool IsHost, char* pszIP, int iPort, netconnectcount iMaxProcessedUsersNumber) :
 	m_bIsInitialized(false),
 	m_bIsHost(IsHost),
 	m_iMaxProcessedUsersNumber(iMaxProcessedUsersNumber),
@@ -65,7 +65,7 @@ void CNetworkTCP::SendPacket(void* pPacket, int iSize)
 	}
 }
 
-void CNetworkTCP::SendPacket(void* pPacket, int iSize, const unsigned int iConnectionID)
+void CNetworkTCP::SendPacket(void* pPacket, int iSize, const netconnectcount iConnectionID)
 {
 	auto Socket = this->m_ClientsList[iConnectionID].m_ConnectionSocket;
 
@@ -75,7 +75,7 @@ void CNetworkTCP::SendPacket(void* pPacket, int iSize, const unsigned int iConne
 	SendToSocket(pPacket, iSize, Socket);
 }
 
-void CNetworkTCP::SendPacket(void* pPacket, int iSize, void* pUserData, bool(*pfSortingDelegate)(void* pUserData, unsigned int iConnectionID))
+void CNetworkTCP::SendPacket(void* pPacket, int iSize, void* pUserData, bool(*pfSortingDelegate)(void* pUserData, netconnectcount iConnectionID))
 {
 	if (!pfSortingDelegate)
 		return;
@@ -456,7 +456,7 @@ bool CNetworkTCP::AddClientsDisconnectionNotificationCallback(f_ClientDisconnect
 	return true;
 }
 
-bool CNetworkTCP::InvokeClientConnectionNotification(bool bIsPreConnectionStep, int iConnectionCount, int iIP, char* szIP, int iPort)
+bool CNetworkTCP::InvokeClientConnectionNotification(bool bIsPreConnectionStep, netconnectcount iConnectionCount, int iIP, char* szIP, int iPort)
 {
 	if (!this->m_pf_ClientConnectionNotificationCallback)
 		return true;
@@ -464,7 +464,7 @@ bool CNetworkTCP::InvokeClientConnectionNotification(bool bIsPreConnectionStep, 
 	return m_pf_ClientConnectionNotificationCallback(bIsPreConnectionStep, iConnectionCount, iIP, szIP, iPort, this->m_pOnClientConnectionUserData);
 }
 
-bool CNetworkTCP::InvokeClientDisconnectionNotification(unsigned int iConnectionID)
+bool CNetworkTCP::InvokeClientDisconnectionNotification(netconnectcount iConnectionID)
 {
 	if (!this->m_pf_ClientDisconnectionNotificationCallback)
 		return true;
@@ -477,7 +477,7 @@ bool CNetworkTCP::GetReceivedData(net_packet_t* pPacket)
 	return ReceivePacket(pPacket);
 }
 
-CNetworkTCP::NETSOCK CNetworkTCP::GetSocketFromConnectionID(unsigned int iConnectionID)
+CNetworkTCP::NETSOCK CNetworkTCP::GetSocketFromConnectionID(netconnectcount iConnectionID)
 {
 	return this->m_ClientsList[iConnectionID].m_ConnectionSocket;
 }
@@ -495,9 +495,9 @@ bool CNetworkTCP::IsHost()
 	return this->m_bIsHost;
 }
 
-unsigned int CNetworkTCP::GetConnectedUsersCount()
+netconnectcount CNetworkTCP::GetConnectedUsersCount()
 {
-	unsigned int ret = 0;
+	netconnectcount ret = 0;
 
 	for (auto& pair : this->m_ClientsList)
 	{
@@ -534,13 +534,13 @@ void CNetworkTCP::DisconnectClient(client_receive_data_thread_t* Client)
 	Client->m_ConnectionSocket = 0;
 }
 
-void CNetworkTCP::DisconnectUser(unsigned int iConnectionID)
+void CNetworkTCP::DisconnectUser(netconnectcount iConnectionID)
 {
 	auto Client = &this->m_ClientsList[iConnectionID];
 	DisconnectClient(Client);
 }
 
-bool CNetworkTCP::GetIpByClientId(unsigned int iConnectionID, int* pIP)
+bool CNetworkTCP::GetIpByClientId(netconnectcount iConnectionID, int* pIP)
 {
 	if (!IsHost())
 		return false;
