@@ -46,8 +46,35 @@ void CNetworkTCP::SendToSocket(void* pPacket, int iSize, const CNetworkTCP::NETS
 
 	delta_packet_t deltaPacket{ g_DeltaPacketMagicValue, iSize };
 
-	if (SEND(Socket, (const char*)&deltaPacket, CNetworkTCP::iDeltaPacketLength) == CNetworkTCP::iDeltaPacketLength)
-		SEND(Socket, (const char*)pPacket, iSize);
+	int sendedDeltaPacketSize = 0;
+	while (sendedDeltaPacketSize < CNetworkTCP::iDeltaPacketLength)
+	{
+		auto send_ret = SEND(Socket, (char*)(&deltaPacket) + sendedDeltaPacketSize, CNetworkTCP::iDeltaPacketLength - sendedDeltaPacketSize);
+
+		if (send_ret == SOCKET_ERROR)
+		{
+			TRACE_FUNC("Error send delta packet to socket: %p sended bytes: %d\n", Socket, sendedDeltaPacketSize);
+			this->m_mtxSendData.unlock();
+			return;
+		}
+
+		sendedDeltaPacketSize += send_ret;
+	}
+
+	int sendedDataPacket = 0;
+	while (sendedDataPacket < iSize)
+	{
+		auto send_ret = SEND(Socket, (char*)(pPacket)+sendedDataPacket, iSize - sendedDataPacket);
+
+		if (send_ret == SOCKET_ERROR)
+		{
+			TRACE_FUNC("Error send packet data to socket: %p sended bytes: %d\n", Socket, sendedDataPacket);
+			this->m_mtxSendData.unlock();
+			return;
+		}
+
+		sendedDataPacket += send_ret;
+	}
 
 	this->m_mtxSendData.unlock();
 }
@@ -71,7 +98,7 @@ void CNetworkTCP::SendPacket(void* pPacket, int iSize, const netconnectcount iCo
 
 	if (!Socket)
 		return;
-		
+
 	SendToSocket(pPacket, iSize, Socket);
 }
 
@@ -179,7 +206,7 @@ void CNetworkTCP::thHostClientReceive(void* arg)
 	{
 		delta_packet_t deltaPacket{};
 
-		short resuidalDeltaPacketSize = 0;
+		int resuidalDeltaPacketSize = 0;
 		while (resuidalDeltaPacketSize < CNetworkTCP::iDeltaPacketLength)
 		{
 			auto recv_ret = RECV(Socket, (char*)(&deltaPacket) + resuidalDeltaPacketSize, CNetworkTCP::iDeltaPacketLength - resuidalDeltaPacketSize);
@@ -214,7 +241,7 @@ void CNetworkTCP::thHostClientReceive(void* arg)
 			continue;
 		}
 
-		short resuidalDataPacketSize = 0;
+		int resuidalDataPacketSize = 0;
 		while (resuidalDataPacketSize < deltaPacket.m_iPacketSize)
 		{
 			auto recv_ret = RECV(Socket, (char*)(pPacketData)+resuidalDataPacketSize, deltaPacket.m_iPacketSize - resuidalDataPacketSize);
@@ -342,7 +369,7 @@ void CNetworkTCP::thClientHostReceive(void* arg)
 	{
 		delta_packet_t deltaPacket{};
 
-		short resuidalDeltaPacketSize = 0;
+		int resuidalDeltaPacketSize = 0;
 		while (resuidalDeltaPacketSize < CNetworkTCP::iDeltaPacketLength)
 		{
 			auto recv_ret = RECV(Socket, (char*)(&deltaPacket) + resuidalDeltaPacketSize, CNetworkTCP::iDeltaPacketLength - resuidalDeltaPacketSize);
@@ -376,7 +403,7 @@ void CNetworkTCP::thClientHostReceive(void* arg)
 			continue;
 		}
 
-		short resuidalDataPacketSize = 0;
+		int resuidalDataPacketSize = 0;
 		while (resuidalDataPacketSize < deltaPacket.m_iPacketSize)
 		{
 			auto recv_ret = RECV(Socket, (char*)(pPacketData)+resuidalDataPacketSize, deltaPacket.m_iPacketSize - resuidalDataPacketSize);

@@ -47,7 +47,7 @@ private:
 	struct delta_packet_t
 	{
 		short magic;
-		unsigned short m_iPacketSize;
+		int m_iPacketSize;
 	};
 
 	static const int iDeltaPacketLength = sizeof(delta_packet_t);
