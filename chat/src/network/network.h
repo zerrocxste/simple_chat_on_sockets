@@ -58,17 +58,18 @@ private:
 	static WSADATA g_WSAdata;
 #endif // _WIN32
 
-	struct client_receive_data_thread_t
+	struct connect_data_t
 	{
 		CNetworkTCP::NETSOCK m_ConnectionSocket;
 		netconnectcount m_iConnectionID;
-		NETSOCKADDR_IN m_SockAddrIn;
+		std::mutex m_mtxSendSocketBlocking;
+		CNetworkTCP::NETSOCKADDR_IN m_SockAddrIn;
 	};
 
 	struct host_receive_thread_arg_t
 	{
 		CNetworkTCP* m_Network;
-		client_receive_data_thread_t* m_CurrentClient;
+		connect_data_t* m_CurrentClient;
 	};
 
 	template <class T> __forceinline static bool ThreadCreate(T* pfunc, void* arg) noexcept
@@ -89,7 +90,7 @@ private:
 	int m_IPort;
 	NETSOCKADDR_IN m_SockAddrIn;
 	NETSOCK m_Socket;
-	std::map<netconnectcount, client_receive_data_thread_t> m_ClientsList;
+	std::map<netconnectcount, connect_data_t> m_ClientsList;
 	netconnectcount m_iConnectionCount;
 	std::vector<net_packet_t> m_PacketsList;
 	bool m_bServerWasDowned;
@@ -97,12 +98,12 @@ private:
 	NotificationCallbackUserDataPtr m_pOnClientConnectionUserData;
 	f_ClientDisconnectionNotification m_pf_ClientDisconnectionNotificationCallback;
 	NotificationCallbackUserDataPtr m_pOnClientDisconnectionUserData;
-	std::mutex m_mtxSendData;
 	std::mutex m_mtxExchangePacketsData;
 
 	bool InitializeNetwork();
 	bool InitializeAsHost();
 	bool InitializeAsClient();
+	void SendToSocket(char* pPacket, int iSize, connect_data_t& connect_data);
 	void AddToPacketList(net_packet_t NetPacket);
 	bool InvokeClientConnectionNotification(bool bIsPreConnectionStep, netconnectcount iConnectionID, int iIP, char* szIP, int iPort);
 	bool InvokeClientDisconnectionNotification(netconnectcount iConnectionID);
@@ -110,18 +111,16 @@ private:
 	void ShutdownNetwork();
 	void DropConnections();
 	void DisconnectSocket(SOCKET Socket);
-	void DisconnectClient(client_receive_data_thread_t* Client);
+	void DisconnectClient(connect_data_t* Client);
 public:
 	CNetworkTCP(bool IsHost, char* pszIP, int iPort, netconnectcount iMaxProcessedUsersNumber);
 	~CNetworkTCP();
 
 	bool Startup();
-	void SendToSocket(void* pPacket, int iSize, const CNetworkTCP::NETSOCK Socket);
-	void SendPacket(void* pPacket, int iSize);
-	void SendPacket(void* pPacket, int iSize, const netconnectcount iConnectionID);
-	void SendPacket(void* pPacket, int iSize, void* pUserData, bool(*pfSortingDelegate)(void* pUserData, netconnectcount iConnectionID));
+	void SendPacket(char* pPacket, int iSize);
+	void SendPacket(char* pPacket, int iSize, const netconnectcount iConnectionID);
+	void SendPacket(char* pPacket, int iSize, void* pUserData, bool(*pfSortingDelegate)(void* pUserData, netconnectcount iConnectionID));
 	bool GetReceivedData(net_packet_t* pPacket);
-	CNetworkTCP::NETSOCK GetSocketFromConnectionID(netconnectcount iConnectionID);
 	bool ServerWasDowned();
 	bool IsHost();
 	netconnectcount GetConnectedUsersCount();

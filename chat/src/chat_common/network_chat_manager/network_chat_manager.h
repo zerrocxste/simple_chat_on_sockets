@@ -106,7 +106,7 @@ private:
 
 	void IncreaseMessagesCounter();
 
-	chat_packet_data_t CreateNetMsg(MSG_TYPE MsgType, char* szMessage, int iMessageSize);
+	chat_packet_data_t CreateNetMsg(MSG_TYPE MsgType, int iMessageSize, int* iWriteStep);
 
 	chat_packet_data_t CreateClientChatMessage(char* szUsername, char* szMessage, netconnectcount iMessageOwnerID, int iMessageID, bool bMessageIsImportant = true);
 	bool SendHostChatMessage(char* szMessage);
@@ -120,7 +120,6 @@ private:
 
 	void SendNetMsg(chat_packet_data_t& chat_packet_data);
 	void SendNetMsgToID(chat_packet_data_t& chat_packet_data, netconnectcount iConnectionID);
-	void SendNetMsgToSocket(chat_packet_data_t& chat_packet_data, CNetworkTCP::NETSOCK Socket);
 
 	bool GrantAdmin(char* szLogin, char* szPassword, netconnectcount iConnectionID);
 	void SendStatusAdmin(netconnectcount iConnectionID, bool IsGranted);

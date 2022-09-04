@@ -37,72 +37,70 @@ CNetworkTCP::~CNetworkTCP()
 	ShutdownNetwork();
 }
 
-void CNetworkTCP::SendToSocket(void* pPacket, int iSize, const CNetworkTCP::NETSOCK Socket)
+void CNetworkTCP::SendToSocket(char* pPacket, int iSize, connect_data_t& connect_data)
 {
+	auto Socket = connect_data.m_ConnectionSocket;
+
 	if (!Socket)
 		return;
 
-	this->m_mtxSendData.lock();
+	connect_data.m_mtxSendSocketBlocking.lock();
 
 	delta_packet_t deltaPacket{ g_DeltaPacketMagicValue, iSize };
 
-	int sendedDeltaPacketSize = 0;
-	while (sendedDeltaPacketSize < CNetworkTCP::iDeltaPacketLength)
+	auto pDeltaPacket = (char*)&deltaPacket;
+	auto iDeltaPacketSize = CNetworkTCP::iDeltaPacketLength;
+
+	while (iDeltaPacketSize > 0)
 	{
-		auto send_ret = SEND(Socket, (char*)(&deltaPacket) + sendedDeltaPacketSize, CNetworkTCP::iDeltaPacketLength - sendedDeltaPacketSize);
+		auto send_ret = SEND(Socket, pDeltaPacket, iDeltaPacketSize);
 
 		if (send_ret == SOCKET_ERROR)
 		{
-			TRACE_FUNC("Error send delta packet to socket: %p sended bytes: %d\n", Socket, sendedDeltaPacketSize);
-			this->m_mtxSendData.unlock();
+			TRACE_FUNC("Error send delta packet to socket: %p sended bytes: %d\n", Socket, CNetworkTCP::iDeltaPacketLength - iDeltaPacketSize);
+			connect_data.m_mtxSendSocketBlocking.unlock();
 			return;
 		}
 
-		sendedDeltaPacketSize += send_ret;
+		pDeltaPacket += send_ret;
+		iDeltaPacketSize -= send_ret;
 	}
 
-	int sendedDataPacket = 0;
-	while (sendedDataPacket < iSize)
+	auto pDataPacket = pPacket;
+	auto iDataPacketSize = iSize;
+
+	while (iDataPacketSize > 0)
 	{
-		auto send_ret = SEND(Socket, (char*)(pPacket)+sendedDataPacket, iSize - sendedDataPacket);
+		auto send_ret = SEND(Socket, pDataPacket, iDataPacketSize);
 
 		if (send_ret == SOCKET_ERROR)
 		{
-			TRACE_FUNC("Error send packet data to socket: %p sended bytes: %d\n", Socket, sendedDataPacket);
-			this->m_mtxSendData.unlock();
+			TRACE_FUNC("Error send packet data to socket: %p sended bytes: %d\n", Socket, iSize - iDataPacketSize);
+			connect_data.m_mtxSendSocketBlocking.unlock();
 			return;
 		}
 
-		sendedDataPacket += send_ret;
+		pDataPacket += send_ret;
+		iDataPacketSize -= send_ret;
 	}
 
-	this->m_mtxSendData.unlock();
+	connect_data.m_mtxSendSocketBlocking.unlock();
 }
 
-void CNetworkTCP::SendPacket(void* pPacket, int iSize)
+void CNetworkTCP::SendPacket(char* pPacket, int iSize)
 {
 	for (auto& pair : this->m_ClientsList)
 	{
-		auto Socket = pair.second.m_ConnectionSocket;
-
-		if (!Socket)
-			continue;
-
-		SendToSocket(pPacket, iSize, Socket);
+		SendToSocket(pPacket, iSize, pair.second);
 	}
 }
 
-void CNetworkTCP::SendPacket(void* pPacket, int iSize, const netconnectcount iConnectionID)
+void CNetworkTCP::SendPacket(char* pPacket, int iSize, const netconnectcount iConnectionID)
 {
-	auto Socket = this->m_ClientsList[iConnectionID].m_ConnectionSocket;
-
-	if (!Socket)
-		return;
-
-	SendToSocket(pPacket, iSize, Socket);
+	SendToSocket(pPacket, iSize, this->m_ClientsList[iConnectionID]);
 }
 
-void CNetworkTCP::SendPacket(void* pPacket, int iSize, void* pUserData, bool(*pfSortingDelegate)(void* pUserData, netconnectcount iConnectionID))
+void CNetworkTCP::SendPacket(char* pPacket, int iSize, void* pUserData, bool(*pfSortingDelegate)(void* pUserData, netconnectcount iConnectionID))
 {
 	if (!pfSortingDelegate)
 		return;
@@ -112,7 +110,7 @@ void CNetworkTCP::SendPacket(void* pPacket, int iSize, void* pUserData, bool(*pf
 		if (!pfSortingDelegate(pUserData, pair.second.m_iConnectionID))
 			continue;
 
-		SendToSocket(pPacket, iSize, pair.second.m_ConnectionSocket);
+		SendToSocket(pPacket, iSize, pair.second);
 	}
 }
 
@@ -322,7 +320,7 @@ void CNetworkTCP::thHostClientsHandling(void* arg)
 
 		TRACE_FUNC("Connected clientid: %d\n", (int)_this->m_ClientsList.size());
 
-		host_receive_thread_arg_t* pHostReceiveThreadArg = new host_receive_thread_arg_t();
+		auto* pHostReceiveThreadArg = new host_receive_thread_arg_t();
 		pHostReceiveThreadArg->m_Network = _this;
 		pHostReceiveThreadArg->m_CurrentClient = &Client;
 
@@ -406,7 +404,7 @@ void CNetworkTCP::thClientHostReceive(void* arg)
 		int resuidalDataPacketSize = 0;
 		while (resuidalDataPacketSize < deltaPacket.m_iPacketSize)
 		{
-			auto recv_ret = RECV(Socket, (char*)(pPacketData)+resuidalDataPacketSize, deltaPacket.m_iPacketSize - resuidalDataPacketSize);
+			auto recv_ret = RECV(Socket, (char*)(pPacketData) + resuidalDataPacketSize, deltaPacket.m_iPacketSize - resuidalDataPacketSize);
 
 			if (recv_ret <= 0)
 			{
@@ -504,11 +502,6 @@ bool CNetworkTCP::GetReceivedData(net_packet_t* pPacket)
 	return ReceivePacket(pPacket);
 }
 
-CNetworkTCP::NETSOCK CNetworkTCP::GetSocketFromConnectionID(netconnectcount iConnectionID)
-{
-	return this->m_ClientsList[iConnectionID].m_ConnectionSocket;
-}
-
 bool CNetworkTCP::ServerWasDowned()
 {
 	if (IsHost())
@@ -555,10 +548,12 @@ void CNetworkTCP::DisconnectSocket(SOCKET Socket)
 	closesocket(Socket);
 }
 
-void CNetworkTCP::DisconnectClient(client_receive_data_thread_t* Client)
+void CNetworkTCP::DisconnectClient(connect_data_t* Client)
 {
+	Client->m_mtxSendSocketBlocking.lock();
 	DisconnectSocket(Client->m_ConnectionSocket);
 	Client->m_ConnectionSocket = 0;
+	Client->m_mtxSendSocketBlocking.unlock();
 }
 
 void CNetworkTCP::DisconnectUser(netconnectcount iConnectionID)
