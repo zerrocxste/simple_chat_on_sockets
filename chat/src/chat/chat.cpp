@@ -1,7 +1,5 @@
 #include "../includes.h"
 
-#include "../update_every/update_every.h"
-
 constexpr auto MAX_PROCESSED_USERS_IN_CHAT = 10;
 
 std::unique_ptr<CNetworkChatManager> g_pNetworkChatManager;
@@ -235,13 +233,7 @@ void Chat::GuiPresents::GuiChat(bool* baBackButton)
 				ImGui::TextWrapped("%s: %s", message->m_szUsername, message->m_szMessage);
 		}
 
-		static CUpdateEvery g_UpdateActiveUsersEvery(100);
-
-		g_UpdateActiveUsersEvery.Update([]() -> void
-			{
-				g_pNetworkChatManager->SendActiveUsersToClients();
-			}
-		);
+		g_pNetworkChatManager->SendActiveUsersToClients();
 
 		ImGui::Spacing();
 

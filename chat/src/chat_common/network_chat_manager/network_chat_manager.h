@@ -39,8 +39,15 @@ private:
 	int m_iMessageLength;
 };
 
+class ICustomChatHandler
+{
+public:
+	virtual void ReceivePacketRoutine(CNetworkChatManager* pNetworkChatManager, char* szMsgType, int iReadCount, netconnectcount iConnectionID, chat_user* User) = 0;
+};
+
 class CNetworkChatManager
 {
+	friend ICustomChatHandler;
 public:
 	CNetworkChatManager(bool IsHost, char* szUsername, char* pszIP, int iPort, netconnectcount iMaxProcessedUsersNumber);
 	~CNetworkChatManager();
@@ -57,6 +64,7 @@ public:
 	void ReceiveDelete(int& iReadCount, chat_user* User, netconnectcount iConnectionID, char* pData, int iDataSize);
 	void ReceiveOnlineList(int& iReadCount, chat_user* User, netconnectcount iConnectionID, char* pData);
 	void SendChatMessage(char* szMessage);
+	void AddCustomChatHandler(ICustomChatHandler* pCustomChatHandler);
 	size_t GetChatArraySize();
 	bool IsNeedExit();
 	bool IsHost();
@@ -91,6 +99,8 @@ private:
 	std::map<netconnectcount, chat_user> m_vUsersList;
 	std::mutex m_mtxChatData;
 
+	ICustomChatHandler* m_pCustomChatMangerHandler;
+
 	char PacketReadChar(char* pData, int* pReadCount);
 	int PacketReadInteger(char* pData, int* pReadCount);
 	char* PacketReadString(char* pData, int iStrLength, int* pReadCount);
@@ -106,7 +116,7 @@ private:
 
 	void IncreaseMessagesCounter();
 
-	chat_packet_data_t CreateNetMsg(MSG_TYPE MsgType, int iMessageSize, int* iWriteStep);
+	chat_packet_data_t CreateNetMsg(const char* szMsgType, int iMessageSize, int* iWriteStep);
 
 	chat_packet_data_t CreateClientChatMessage(char* szUsername, char* szMessage, netconnectcount iMessageOwnerID, int iMessageID, bool bMessageIsImportant = true);
 	bool SendHostChatMessage(char* szMessage);
@@ -115,8 +125,6 @@ private:
 	int CalcNetString(int iValueLength);
 
 	MSG_TYPE GetMsgType(char* szMsg);
-	const char* GetStrMsgType(MSG_TYPE MsgType);
-	MSG_TYPE PacketReadMsgType(char* pData, int* pReadCount);
 
 	void SendNetMsg(chat_packet_data_t& chat_packet_data);
 	void SendNetMsgToID(chat_packet_data_t& chat_packet_data, netconnectcount iConnectionID);

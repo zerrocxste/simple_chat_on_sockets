@@ -34,9 +34,6 @@
     <Filter Include="src\ierror">
       <UniqueIdentifier>{07697423-c6e6-4a0f-8442-b4514f20c885}</UniqueIdentifier>
     </Filter>
-    <Filter Include="src\update_every">
-      <UniqueIdentifier>{6ce374f1-4463-4cca-ace4-8dda57c526a5}</UniqueIdentifier>
-    </Filter>
     <Filter Include="src\chat_common">
       <UniqueIdentifier>{319b496e-7630-47a0-a538-99577d2a0c28}</UniqueIdentifier>
     </Filter>
@@ -86,9 +83,6 @@
     </ClCompile>
     <ClCompile Include="src\ierror\ierror.cpp">
       <Filter>src\ierror</Filter>
-    </ClCompile>
-    <ClCompile Include="src\update_every\update_every.cpp">
-      <Filter>src\update_every</Filter>
     </ClCompile>
     <ClCompile Include="src\chat_common\chat_data\chat_data.cpp">
       <Filter>src\chat_common\chat_data</Filter>
@@ -148,9 +142,6 @@
     </ClInclude>
     <ClInclude Include="src\ierror\ierror.h">
       <Filter>src\ierror</Filter>
-    </ClInclude>
-    <ClInclude Include="src\update_every\update_every.h">
-      <Filter>src\update_every</Filter>
     </ClInclude>
     <ClInclude Include="src\chat_common\chat_common.h">
       <Filter>src\chat_common</Filter>
