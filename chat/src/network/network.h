@@ -47,7 +47,7 @@ private:
 	struct delta_packet_t
 	{
 		short magic;
-		int m_iPacketSize;
+		int delta_desc;
 	};
 
 	static const int iDeltaPacketLength = sizeof(delta_packet_t);
@@ -63,6 +63,7 @@ private:
 		CNetworkTCP::NETSOCK m_ConnectionSocket;
 		netconnectcount m_iConnectionID;
 		std::mutex m_mtxSendSocketBlocking;
+		std::chrono::system_clock::time_point m_tpSendHeartbeat, m_tpLastHeartbeat;
 		CNetworkTCP::NETSOCKADDR_IN m_SockAddrIn;
 	};
 
@@ -79,6 +80,7 @@ private:
 	}
 
 	static void thHostClientReceive(void* arg);
+	static void thHostHeartbeat(void* arg);
 	static void thHostClientsHandling(void* arg);
 
 	static void thClientHostReceive(void* arg);
@@ -86,10 +88,12 @@ private:
 	bool m_bIsInitialized;
 	bool m_bIsHost;
 	netconnectcount m_iMaxProcessedUsersNumber;
+	bool m_bIsNeedExit;
 	char* m_pszIP;
 	int m_IPort;
 	NETSOCKADDR_IN m_SockAddrIn;
 	NETSOCK m_Socket;
+	std::mutex m_mtxHeatbeatThread;
 	std::map<netconnectcount, connect_data_t> m_ClientsList;
 	netconnectcount m_iConnectionCount;
 	std::vector<net_packet_t> m_PacketsList;
@@ -103,6 +107,7 @@ private:
 	bool InitializeNetwork();
 	bool InitializeAsHost();
 	bool InitializeAsClient();
+	void SendHeartbeat(connect_data_t& connect_data);
 	void SendToSocket(char* pPacket, int iSize, connect_data_t& connect_data);
 	void AddToPacketList(net_packet_t NetPacket);
 	bool InvokeClientConnectionNotification(bool bIsPreConnectionStep, netconnectcount iConnectionID, int iIP, char* szIP, int iPort);
@@ -112,13 +117,18 @@ private:
 	void DropConnections();
 	void DisconnectSocket(SOCKET Socket);
 	void DisconnectClient(connect_data_t* Client);
+	void NeedExit();
+	bool IsNeedExit();
 public:
 	CNetworkTCP(bool IsHost, char* pszIP, int iPort, netconnectcount iMaxProcessedUsersNumber);
 	~CNetworkTCP();
 
 	bool Startup();
 	void SendPacket(char* pPacket, int iSize);
-	void SendPacket(char* pPacket, int iSize, const netconnectcount iConnectionID);
+	void SendPacketIncludeID(char* pPacket, int iSize, const netconnectcount iConnectionID);
+	void SendPacketExcludeID(char* pPacket, int iSize, const netconnectcount iConnectionID);
+	void SendPacketIncludeConnectionsID(char* pPacket, int iSize, const netconnectcount* pConnectionsIDs, int iSizeofConections);
+	void SendPacketExcludeConnectionsID(char* pPacket, int iSize, const netconnectcount* pConnectionsIDs, int iSizeofConections);
 	void SendPacket(char* pPacket, int iSize, void* pUserData, bool(*pfSortingDelegate)(void* pUserData, netconnectcount iConnectionID));
 	bool GetReceivedData(net_packet_t* pPacket);
 	bool ServerWasDowned();
@@ -126,12 +136,16 @@ public:
 	netconnectcount GetConnectedUsersCount();
 	void DisconnectUser(netconnectcount iConnectionID);
 	bool GetIpByClientId(netconnectcount iConnectionID, int* pIP);
-	char* GetStrIpFromSockAddrIn(PSOCKADDR_IN pSockAddrIn);
-	int GetIntegerIpFromSockAddrIn(PSOCKADDR_IN pSockAddrIn);
-	int GetPortFromSockAddrIn(PSOCKADDR_IN pSockAddrIn);
+
+	static char* GetStrIpFromSockAddrIn(PSOCKADDR_IN pSockAddrIn);
+	static int GetIntegerIpFromSockAddrIn(PSOCKADDR_IN pSockAddrIn);
+	static std::uint16_t GetPortFromSockAddrIn(PSOCKADDR_IN pSockAddrIn);
+	static std::uint16_t GetPortFromTCPIPFormat(std::uint16_t netshort);
+	static std::uint16_t GetTCPIPFormatFromPort(std::uint16_t port);
+
 	bool AddClientsConnectionNotificationCallback(f_ClientConnectionNotification pf_NewClientsNotificationCallback, NotificationCallbackUserDataPtr pUserData);
 	bool AddClientsDisconnectionNotificationCallback(f_ClientDisconnectionNotification pf_ClientDisconnectionNotification, NotificationCallbackUserDataPtr pUserData);
 
-	static bool StrIpToInteger(char* szIP, int* pIP);
-	static bool IntegerIpToStr(int iIP, char* szIP);
+	static  std::uint32_t StrIpToInteger(char* szIP);
+	static bool IntegerIpToStr(int iIP, char szOutIP[16]);
 };
