@@ -146,6 +146,8 @@ public:
 	bool AddClientsConnectionNotificationCallback(f_ClientConnectionNotification pf_NewClientsNotificationCallback, NotificationCallbackUserDataPtr pUserData);
 	bool AddClientsDisconnectionNotificationCallback(f_ClientDisconnectionNotification pf_ClientDisconnectionNotification, NotificationCallbackUserDataPtr pUserData);
 
-	static  std::uint32_t StrIpToInteger(char* szIP);
+	static std::uint32_t StrIpToInteger(char* szIP);
 	static bool IntegerIpToStr(int iIP, char szOutIP[16]);
+
+	static bool SetSockNoDelay(CNetworkTCP::NETSOCK Sock);
 };

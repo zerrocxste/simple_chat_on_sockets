@@ -15,8 +15,7 @@ chat_packet_data_t::chat_packet_data_t(const chat_packet_data_t& PacketData)
 
 chat_packet_data_t::chat_packet_data_t(int iMessageLength)
 {
-	this->m_pPacket = new (std::nothrow) char[iMessageLength];
-	if (!this->m_pPacket)
+	if (!(this->m_pPacket = new (std::nothrow) char[iMessageLength]))
 		std::abort();
 	this->m_iProcessStep = 0;
 	this->m_iMessageLength = iMessageLength;
@@ -60,7 +59,10 @@ void chat_packet_data_t::reset_process_step()
 void chat_packet_data_t::release()
 {
 	if (*this)
+	{
 		delete[] this->m_pPacket;
+		this->m_pPacket = nullptr;
+	}
 }
 
 constexpr auto SEND_CHAT_TO_HOST_MSG = "SEND_CHAT_TO_HOST_MSG";
@@ -140,6 +142,7 @@ CNetworkChatManager::~CNetworkChatManager()
 		pCustomChatMangerHandler->OnRelease();
 
 	delete this->m_pNetwork;
+
 	delete this->m_pChatData;
 }
 
@@ -229,16 +232,16 @@ void CNetworkChatManager::ReceivePacketsRoutine()
 			ReceiveOnlineList(packet_data, User, ConnectionID);
 			break;
 		default:
-			{
-				auto pCustomChatMangerHandler = this->m_pCustomChatMangerHandler;
+		{
+			auto pCustomChatMangerHandler = this->m_pCustomChatMangerHandler;
 
-				if (pCustomChatMangerHandler != nullptr)
-				{
-					packet_data.reset_process_step();
-					pCustomChatMangerHandler->ReceivePacketRoutine(packet_data, ConnectionID, User);
-				}
-				break;
+			if (pCustomChatMangerHandler != nullptr)
+			{
+				packet_data.reset_process_step();
+				pCustomChatMangerHandler->ReceivePacketRoutine(packet_data, ConnectionID, User);
 			}
+			break;
+		}
 		}
 	}
 }
@@ -396,7 +399,7 @@ void CNetworkChatManager::ReceiveConnected(int& iReadCount, chat_user* User, net
 		if (NetMsg)
 		{
 			SendNetMsgIncludeID(NetMsg, iConnectionID);
-			ResendLastMessagesToClient(iConnectionID, 250);
+			ResendLastMessagesToClient(iConnectionID, 1000);
 		}
 
 		auto pCustomChatMangerHandler = this->m_pCustomChatMangerHandler;
@@ -692,6 +695,13 @@ int CNetworkChatManager::PacketReadInteger(char* pData, int* pReadCount)
 	return *(int*)ret;
 }
 
+char* CNetworkChatManager::PacketReadData(char* pData, int iReadingSize, int* pReadCount)
+{
+	auto ret = pData + *pReadCount;
+	*pReadCount += iReadingSize;
+	return ret;
+}
+
 char* CNetworkChatManager::PacketReadString(char* pData, int iStrLength, int* pReadCount)
 {
 	if (iStrLength <= 0)
@@ -724,6 +734,11 @@ char CNetworkChatManager::PacketReadChar(chat_packet_data_t& packet_data)
 int CNetworkChatManager::PacketReadInteger(chat_packet_data_t& packet_data)
 {
 	return PacketReadInteger(packet_data.m_pPacket, &packet_data.m_iProcessStep);
+}
+
+char* CNetworkChatManager::PacketReadData(chat_packet_data_t& packet_data, int iReadingSize)
+{
+	return PacketReadData(packet_data.m_pPacket, iReadingSize, &packet_data.m_iProcessStep);
 }
 
 char* CNetworkChatManager::PacketReadString(chat_packet_data_t& packet_data, int iStrLength)
@@ -920,7 +935,7 @@ void CNetworkChatManager::CheckPacketValid(chat_packet_data_t& chat_packet_data)
 {
 	if (chat_packet_data.m_iMessageLength != chat_packet_data.m_iProcessStep)
 	{
-		std::printf("Invalid packet parameters. NetPacket.m_iMessageLength: %d NetPacket.m_iProcessStep: %d\n", chat_packet_data.m_iMessageLength, chat_packet_data.m_iProcessStep);
+		/*std::*/printf("Invalid packet parameters. NetPacket.m_iMessageLength: %d NetPacket.m_iProcessStep: %d\n", chat_packet_data.m_iMessageLength, chat_packet_data.m_iProcessStep);
 		std::abort();
 	}
 }
@@ -955,7 +970,6 @@ bool CNetworkChatManager::AddAdminAccessLoginPassword(const char szLogin[128], c
 	memcpy(data.m_szLogin, szLogin, strlen(szLogin) + 1);
 	memcpy(data.m_szPassword, szPassword, strlen(szPassword) + 1);
 	this->m_vLoginPassData.push_back(data);
-
 	return true;
 }
 

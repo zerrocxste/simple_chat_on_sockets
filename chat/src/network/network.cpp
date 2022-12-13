@@ -92,40 +92,34 @@ void CNetworkTCP::SendToSocket(char* pPacket, int iSize, connect_data_t& connect
 
 	delta_packet_t deltaPacket{ DELTA_PACKET_MAGIC, iSize };
 
-	auto pDeltaPacket = (char*)&deltaPacket;
-	auto iDeltaPacketSize = CNetworkTCP::iDeltaPacketLength;
-
-	while (iDeltaPacketSize > 0)
+	auto iDeltaPacketSended = 0;
+	while (iDeltaPacketSended < CNetworkTCP::iDeltaPacketLength)
 	{
-		auto send_ret = SEND(Socket, pDeltaPacket, iDeltaPacketSize);
+		auto send_ret = SEND(Socket, (char*)&deltaPacket + iDeltaPacketSended, CNetworkTCP::iDeltaPacketLength - iDeltaPacketSended);
 
 		if (send_ret == SOCKET_ERROR)
 		{
-			TRACE_FUNC("Error send delta packet to socket: %p sended bytes: %d\n", Socket, CNetworkTCP::iDeltaPacketLength - iDeltaPacketSize);
+			TRACE_FUNC("Error send delta packet to socket: %p sended bytes: %d\n", Socket, iDeltaPacketSended);
 			connect_data.m_mtxSendSocketBlocking.unlock();
 			return;
 		}
 
-		pDeltaPacket += send_ret;
-		iDeltaPacketSize -= send_ret;
+		iDeltaPacketSended += send_ret;
 	}
 
-	auto pDataPacket = pPacket;
-	auto iDataPacketSize = iSize;
-
-	while (iDataPacketSize > 0)
+	auto iPacketSended = 0;
+	while (iPacketSended < iSize)
 	{
-		auto send_ret = SEND(Socket, pDataPacket, iDataPacketSize);
+		auto send_ret = SEND(Socket, pPacket + iPacketSended, iSize - iPacketSended);
 
 		if (send_ret == SOCKET_ERROR)
 		{
-			TRACE_FUNC("Error send packet data to socket: %p sended bytes: %d\n", Socket, iSize - iDataPacketSize);
+			TRACE_FUNC("Error send packet data to socket: %p sended bytes: %d\n", Socket, iPacketSended);
 			connect_data.m_mtxSendSocketBlocking.unlock();
 			return;
 		}
 
-		pDataPacket += send_ret;
-		iDataPacketSize -= send_ret;
+		iPacketSended += send_ret;
 	}
 
 	connect_data.m_mtxSendSocketBlocking.unlock();
@@ -283,15 +277,24 @@ bool CNetworkTCP::Startup()
 
 	this->m_Socket = socket(AF_INET, SOCK_STREAM, 0);
 
+	const int iReceiveBuffer = 1 * 1024 * 1024; //orginal: 65535
+	const int iSendBuffer = 4 * 1024 * 1024; //4 megabytes
+	setsockopt(this->m_Socket, SOL_SOCKET, SO_RCVBUF, (char*)&iReceiveBuffer, sizeof(int));
+	setsockopt(this->m_Socket, SOL_SOCKET, SO_SNDBUF, (char*)&iSendBuffer, sizeof(int));
+
+	SetSockNoDelay(this->m_Socket);
+
 	return this->m_bIsInitialized = (this->m_bIsHost ? InitializeAsHost() : InitializeAsClient());
 }
 
 void CNetworkTCP::thHostClientReceive(void* arg)
 {
-	auto _this = ((host_receive_thread_arg_t*)arg)->m_Network;
-	auto Client = ((host_receive_thread_arg_t*)arg)->m_CurrentClient;
+	auto p_host_receive_thread_arg_t = (host_receive_thread_arg_t*)arg;
 
-	delete (host_receive_thread_arg_t*)arg;
+	auto _this = p_host_receive_thread_arg_t->m_Network;
+	auto Client = p_host_receive_thread_arg_t->m_CurrentClient;
+
+	delete p_host_receive_thread_arg_t;
 
 	auto Socket = Client->m_ConnectionSocket;
 	auto ConnectionID = Client->m_iConnectionID;
@@ -510,6 +513,8 @@ void CNetworkTCP::thClientHostReceive(void* arg)
 
 	auto& HostData = _this->m_ClientsList[CLIENT_SOCKET];
 
+	auto Socket = HostData.m_ConnectionSocket;
+
 	while (!_this->IsNeedExit())
 	{
 		delta_packet_t deltaPacket{};
@@ -517,7 +522,7 @@ void CNetworkTCP::thClientHostReceive(void* arg)
 		int resuidalDeltaPacketSize = 0;
 		while (resuidalDeltaPacketSize < CNetworkTCP::iDeltaPacketLength)
 		{
-			auto recv_ret = RECV(HostData.m_ConnectionSocket, (char*)(&deltaPacket) + resuidalDeltaPacketSize, CNetworkTCP::iDeltaPacketLength - resuidalDeltaPacketSize);
+			auto recv_ret = RECV(Socket, (char*)(&deltaPacket) + resuidalDeltaPacketSize, CNetworkTCP::iDeltaPacketLength - resuidalDeltaPacketSize);
 
 			if (recv_ret <= 0)
 			{
@@ -558,7 +563,7 @@ void CNetworkTCP::thClientHostReceive(void* arg)
 		int resuidalDataPacketSize = 0;
 		while (resuidalDataPacketSize < deltaPacket.delta_desc)
 		{
-			auto recv_ret = RECV(HostData.m_ConnectionSocket, (char*)(pPacketData)+resuidalDataPacketSize, deltaPacket.delta_desc - resuidalDataPacketSize);
+			auto recv_ret = RECV(Socket, (char*)(pPacketData)+resuidalDataPacketSize, deltaPacket.delta_desc - resuidalDataPacketSize);
 
 			if (recv_ret <= 0)
 			{
@@ -641,7 +646,7 @@ bool CNetworkTCP::InvokeClientConnectionNotification(bool bIsPreConnectionStep, 
 	if (!this->m_pf_ClientConnectionNotificationCallback)
 		return true;
 
-	return m_pf_ClientConnectionNotificationCallback(bIsPreConnectionStep, iConnectionCount, iIP, szIP, iPort, this->m_pOnClientConnectionUserData);
+	return this->m_pf_ClientConnectionNotificationCallback(bIsPreConnectionStep, iConnectionCount, iIP, szIP, iPort, this->m_pOnClientConnectionUserData);
 }
 
 bool CNetworkTCP::InvokeClientDisconnectionNotification(netconnectcount iConnectionID)
@@ -649,7 +654,7 @@ bool CNetworkTCP::InvokeClientDisconnectionNotification(netconnectcount iConnect
 	if (!this->m_pf_ClientDisconnectionNotificationCallback)
 		return true;
 
-	return m_pf_ClientDisconnectionNotificationCallback(iConnectionID, this->m_pOnClientDisconnectionUserData);
+	return this->m_pf_ClientDisconnectionNotificationCallback(iConnectionID, this->m_pOnClientDisconnectionUserData);
 }
 
 bool CNetworkTCP::GetReceivedData(net_packet_t* pPacket)
@@ -794,8 +799,15 @@ bool CNetworkTCP::IntegerIpToStr(int iIP, char szOutIP[16])
 		return false;
 
 	std::uint8_t* pIP = (std::uint8_t*)&iIP;
-
 	sprintf(szOutIP, "%d.%d.%d.%d", pIP[0], pIP[1], pIP[2], pIP[3]); //???????????????????????????????????????????????
-
 	return true;
+}
+
+bool CNetworkTCP::SetSockNoDelay(CNetworkTCP::NETSOCK Sock)
+{
+	static int yes = 1;
+	auto ret = setsockopt(Sock, IPPROTO_TCP, TCP_NODELAY, (const char*)&yes, sizeof(int));
+	if (ret != 0)
+		TRACE_FUNC("Error set TCP_NODELAY setsockopt ret: %d\n", ret);
+	return ret == 0;
 }

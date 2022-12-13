@@ -90,10 +90,12 @@ public:
 
 	static char PacketReadChar(char* pData, int* pReadCount);
 	static int PacketReadInteger(char* pData, int* pReadCount);
+	static char* PacketReadData(char* pData, int iReadingSize, int* pReadCount);
 	static char* PacketReadString(char* pData, int iStrLength, int* pReadCount);
 	static char* PacketReadNetString(char* pData, int* pReadCount, int* pStrLength = nullptr);
 	static char PacketReadChar(chat_packet_data_t& packet_data);
 	static int PacketReadInteger(chat_packet_data_t& packet_data);
+	static char* PacketReadData(chat_packet_data_t& packet_data, int iReadingSize);
 	static char* PacketReadString(chat_packet_data_t& packet_data, int iStrLength);
 	static char* PacketReadNetString(chat_packet_data_t& packet_data, int* pStrLength = nullptr);
 
