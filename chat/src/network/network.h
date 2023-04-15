@@ -62,7 +62,7 @@ private:
 	{
 		CNetworkTCP::NETSOCK m_ConnectionSocket;
 		netconnectcount m_iConnectionID;
-		std::mutex m_mtxSendSocketBlocking;
+		std::mutex* m_mtxSendSocketBlocking;
 		std::chrono::system_clock::time_point m_tpSendHeartbeat, m_tpLastHeartbeat;
 		CNetworkTCP::NETSOCKADDR_IN m_SockAddrIn;
 	};
@@ -73,10 +73,90 @@ private:
 		connect_data_t* m_CurrentClient;
 	};
 
+	class CSyncObject
+	{
+	public:
+		std::shared_mutex m_SharedLocker;
+	};
+
+	template <class _k, class _t>
+	class CRWMapIterator
+	{
+	public:
+		CRWMapIterator(CSyncObject& SyncObj, std::map<_k, _t>& Map, bool WriteAccess = false)
+			: m_pSyncObj(&SyncObj), m_pMap(&Map), m_WriteAccess(WriteAccess)
+		{
+			m_WriteAccess ?
+				m_pSyncObj->m_SharedLocker.lock() :
+				m_pSyncObj->m_SharedLocker.lock_shared();
+		}
+
+		~CRWMapIterator()
+		{
+			m_WriteAccess ?
+				m_pSyncObj->m_SharedLocker.unlock() :
+				m_pSyncObj->m_SharedLocker.unlock_shared();
+		}
+
+		auto begin() { return this->m_pMap->begin(); }
+		auto end() { return this->m_pMap->end(); }
+
+		CSyncObject* m_pSyncObj;
+		std::map<_k, _t>* m_pMap;
+		bool m_WriteAccess;
+	};
+
+	class CNetworkUsersListComponent
+	{
+	public:
+		CNetworkUsersListComponent() = default;
+		~CNetworkUsersListComponent() = default;
+	private:
+		CSyncObject m_SyncObj;
+		std::map<netconnectcount, connect_data_t> m_ClientsList;
+	public:
+		std::atomic<netconnectcount> m_iConnectionCount;
+
+		std::uint64_t Size() { return this->m_ClientsList.size(); }
+
+		void FetchUser(netconnectcount count, connect_data_t& user)
+		{
+			std::unique_lock<decltype(this->m_SyncObj.m_SharedLocker)> ul(this->m_SyncObj.m_SharedLocker);
+			this->m_ClientsList[count] = user;
+		}
+
+		void UpdateUser(netconnectcount count, connect_data_t& user)
+		{
+			this->m_ClientsList[count] = user;
+		}
+
+		connect_data_t GetUser(netconnectcount count)
+		{
+			std::shared_lock<decltype(this->m_SyncObj.m_SharedLocker)> sl(this->m_SyncObj.m_SharedLocker);
+			return this->m_ClientsList[count];
+		}
+
+		__forceinline CRWMapIterator<netconnectcount, connect_data_t> GetReadOnlyMapIterator()
+		{
+			return CRWMapIterator<netconnectcount, connect_data_t>(this->m_SyncObj, this->m_ClientsList);
+		}
+	};
+
 	template <class T> __forceinline static bool ThreadCreate(T* pfunc, void* arg) noexcept
 	{
-		std::thread(pfunc, arg).detach();
+#ifdef _WIN32
+		void* thr_hndl = 0;
+		while (!(thr_hndl = (void*)CreateThread(nullptr, 0, (LPTHREAD_START_ROUTINE)pfunc, arg, 0, nullptr)));
+		if (thr_hndl != INVALID_HANDLE_VALUE)
+		{
+			CloseHandle(thr_hndl);
+			return true;
+		}
+		return false;
+#else
+		while (!_beginthread(pfunc, 0, arg));
 		return true;
+#endif
 	}
 
 	static void thHostClientReceive(void* arg);
@@ -94,8 +174,7 @@ private:
 	NETSOCKADDR_IN m_SockAddrIn;
 	NETSOCK m_Socket;
 	std::mutex m_mtxHeatbeatThread;
-	std::map<netconnectcount, connect_data_t> m_ClientsList;
-	netconnectcount m_iConnectionCount;
+	CNetworkUsersListComponent m_UsersList;
 	std::vector<net_packet_t> m_PacketsList;
 	bool m_bServerWasDowned;
 	f_ClientConnectionNotification m_pf_ClientConnectionNotificationCallback;
@@ -124,6 +203,7 @@ public:
 	~CNetworkTCP();
 
 	bool Startup();
+	void ForceExit();
 	void SendPacket(char* pPacket, int iSize);
 	void SendPacketIncludeID(char* pPacket, int iSize, const netconnectcount iConnectionID);
 	void SendPacketExcludeID(char* pPacket, int iSize, const netconnectcount iConnectionID);

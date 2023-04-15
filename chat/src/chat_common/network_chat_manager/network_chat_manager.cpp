@@ -15,7 +15,8 @@ chat_packet_data_t::chat_packet_data_t(const chat_packet_data_t& PacketData)
 
 chat_packet_data_t::chat_packet_data_t(int iMessageLength)
 {
-	if (!(this->m_pPacket = new (std::nothrow) char[iMessageLength]))
+	this->m_pPacket = new (std::nothrow) char[iMessageLength];
+	if (!this->m_pPacket)
 		std::abort();
 	this->m_iProcessStep = 0;
 	this->m_iMessageLength = iMessageLength;
@@ -97,6 +98,7 @@ bool CNetworkChatManager::OnConnectionNotification(bool bIsPreConnectionStep, ne
 	else
 	{
 		pNetworkChatManager->SendConnectedMessage(iConnectionID);
+		pNetworkChatManager->SendActiveUsersToClients();
 	}
 
 	return true;
@@ -173,6 +175,12 @@ bool CNetworkChatManager::Initialize()
 void CNetworkChatManager::Shutdown()
 {
 	this->m_bNeedExit = true;
+}
+
+void CNetworkChatManager::ForceExit()
+{
+	Shutdown();
+	this->m_pNetwork->ForceExit();
 }
 
 void CNetworkChatManager::ReceivePacketsRoutine()
@@ -332,6 +340,11 @@ void CNetworkChatManager::ReceiveAdminRequest(int& iReadCount, chat_user* User, 
 	}
 
 	SendStatusAdmin(iConnectionID, IsGranted);
+
+	if (IsGranted && this->m_pCustomChatMangerHandler)
+	{
+		this->m_pCustomChatMangerHandler->OnAdminAllowed(iConnectionID, User);
+	}
 }
 
 void CNetworkChatManager::ReceiveAdminRequest(chat_packet_data_t& packet_data, chat_user* User, netconnectcount iConnectionID)
@@ -662,18 +675,17 @@ void CNetworkChatManager::SendActiveUsersToClients()
 		PacketWriteInteger(NetMsg, GetActiveUsers());
 
 		if (NetMsg)
+		{
 			SendNetMsg(NetMsg);
+		}	
 	}
 
 	this->m_iUsersConnectedToHostPrevFrame = iConnectedUsers;
 }
 
-CChatData* CNetworkChatManager::GetChatData()
+CSafeObject<CChatData> CNetworkChatManager::GetChatData()
 {
-	this->m_mtxChatData.lock();
-	auto ret = this->m_pChatData;
-	this->m_mtxChatData.unlock();
-	return ret;
+	return CSafeObject<CChatData>(this->m_pChatData, &this->m_mtxChatData);
 }
 
 netconnectcount CNetworkChatManager::GetClientConnectionID()
@@ -956,6 +968,19 @@ void CNetworkChatManager::SendNetMsgExcludeID(chat_packet_data_t& chat_packet_da
 {
 	CheckPacketValid(chat_packet_data);
 	GetNetwork()->SendPacketExcludeID(chat_packet_data.m_pPacket, chat_packet_data.m_iMessageLength, iConnectionID);
+}
+
+void CNetworkChatManager::SendNetMsgWithCondition(chat_packet_data_t& chat_packet_data, fSendConditionSort f)
+{
+	CheckPacketValid(chat_packet_data);
+
+	for (auto& u : this->m_vUsersList)
+	{
+		if (!f(u.first, &u.second))
+			continue;
+
+		GetNetwork()->SendPacketIncludeID(chat_packet_data.m_pPacket, chat_packet_data.m_iMessageLength, u.first);
+	}
 }
 
 bool CNetworkChatManager::AddAdminAccessLoginPassword(const char szLogin[128], const char szPassword[128])

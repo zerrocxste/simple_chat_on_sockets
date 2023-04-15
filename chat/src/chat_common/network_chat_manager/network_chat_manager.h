@@ -43,6 +43,33 @@ private:
 	int m_iMessageLength;
 };
 
+template <class T> class CSafeObject
+{
+private:
+	std::recursive_mutex* m;
+	T* o;
+public:
+	CSafeObject(T* obj, std::recursive_mutex* mtx) : o(obj), m(mtx)
+	{
+		m->lock();
+	}
+
+	~CSafeObject()
+	{
+		m->unlock();
+	}
+
+	T* Get()
+	{
+		return this->o;
+	}
+
+	T* operator->()
+	{
+		return this->o;
+	}
+};
+
 class CNetworkChatManager : public IError
 {
 	friend ICustomChatHandler;
@@ -52,6 +79,7 @@ public:
 
 	bool Initialize();
 	void Shutdown();
+	void ForceExit();
 	void ReceivePacketsRoutine();
 	void ReceiveSendChatToHost(int& iReadCount, chat_user* User, netconnectcount iConnectionID, char* pData);
 	void ReceiveSendChatToHost(chat_packet_data_t& packet_data, chat_user* User, netconnectcount iConnectionID);
@@ -84,7 +112,7 @@ public:
 	bool IsAdmin();
 	netconnectcount GetActiveUsers();
 	void SendActiveUsersToClients();
-	CChatData* GetChatData();
+	CSafeObject<CChatData> GetChatData();
 	netconnectcount GetClientConnectionID();
 	bool AddAdminAccessLoginPassword(const char szLogin[128], const char szPassword[128]);
 
@@ -131,38 +159,29 @@ private:
 	char m_szUsername[32];
 	int m_iUsernameLength;
 	std::map<netconnectcount, chat_user> m_vUsersList;
-	std::mutex m_mtxChatData;
-
+	std::recursive_mutex m_mtxChatData;
+	ICustomChatHandler* m_pCustomChatMangerHandler;
 	struct admin_access_login_password_s
 	{
 		char m_szLogin[128];
 		char m_szPassword[128];
 	};
 	std::vector<admin_access_login_password_s> m_vLoginPassData;
-
-	ICustomChatHandler* m_pCustomChatMangerHandler;
-
 	bool IsValidStrMessage(char* szString, int iStringLength);
-
 	void IncreaseMessagesCounter();
-
 	chat_packet_data_t CreateNetMsg(const char* szMsgType, int iMessageSize = 0);
-
 	chat_packet_data_t CreateClientChatMessage(char* szUsername, char* szMessage, netconnectcount iMessageOwnerID, int iMessageID, bool bMessageIsImportant = true);
 	bool SendHostChatMessage(char* szMessage);
-
 	MSG_TYPE GetMsgType(char* szMsg);
-
 	void CheckPacketValid(chat_packet_data_t& chat_packet_data);
 	void SendNetMsg(chat_packet_data_t& chat_packet_data);
 	void SendNetMsgIncludeID(chat_packet_data_t& chat_packet_data, netconnectcount iConnectionID);
 	void SendNetMsgExcludeID(chat_packet_data_t& chat_packet_data, netconnectcount iConnectionID);
-
+	using fSendConditionSort = bool(*)(netconnectcount, chat_user*);
+	void SendNetMsgWithCondition(chat_packet_data_t& chat_packet_data, fSendConditionSort f);
 	bool GrantAdmin(char* szLogin, char* szPassword, netconnectcount iConnectionID);
 	void SendStatusAdmin(netconnectcount iConnectionID, bool IsGranted);
-
 	chat_user* GetUser(netconnectcount iConnectionID);
-
 	CNetworkTCP* GetNetwork();
 };
 
@@ -193,6 +212,11 @@ protected:
 	{
 		this->m_pNetworkChatHandler->SendNetMsgExcludeID(chat_packet_data, iConnectionID);
 	}
+
+	void SendNetMsgWithCondition(chat_packet_data_t& chat_packet_data, CNetworkChatManager::fSendConditionSort f)
+	{
+		this->m_pNetworkChatHandler->SendNetMsgWithCondition(chat_packet_data, f);
+	}
 private:
 	void OnInit(CNetworkChatManager* pNetworkChatManager)
 	{
@@ -204,4 +228,5 @@ public:
 	virtual void OnConnectUser(netconnectcount iConnectionID, chat_user* User) = 0;
 	virtual void OnDisconnectionUser(netconnectcount iConnectionID, chat_user* chat_user_data) = 0;
 	virtual void ReceivePacketRoutine(chat_packet_data_t& packet_data, netconnectcount iConnectionID, chat_user* User) = 0;
+	virtual void OnAdminAllowed(netconnectcount iConnectionID, chat_user* User) = 0;
 };

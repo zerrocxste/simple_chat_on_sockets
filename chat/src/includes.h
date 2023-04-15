@@ -24,6 +24,7 @@
 #include <thread>
 #include <mutex>
 #include <string>
+#include <shared_mutex>
 
 #include <dwmapi.h>
 #pragma comment (lib, "dwmapi.lib")

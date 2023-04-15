@@ -19,8 +19,7 @@ CNetworkTCP::CNetworkTCP(bool IsHost, char* pszIP, int iPort, netconnectcount iM
 	m_pszIP(pszIP),
 	m_IPort(iPort),
 	m_Socket(0),
-	m_bServerWasDowned(false),
-	m_iConnectionCount(0)
+	m_bServerWasDowned(false)
 {
 	TRACE_FUNC("Contructor called\n");
 
@@ -53,7 +52,7 @@ void CNetworkTCP::SendHeartbeat(connect_data_t& connect_data)
 	if (Socket == 0)
 		return;
 
-	connect_data.m_mtxSendSocketBlocking.lock();
+	connect_data.m_mtxSendSocketBlocking->lock();
 
 	delta_packet_t deltaPacket{ DELTA_PACKET_MAGIC, HEARTBEAT_ACK };
 
@@ -67,7 +66,7 @@ void CNetworkTCP::SendHeartbeat(connect_data_t& connect_data)
 		if (send_ret == SOCKET_ERROR)
 		{
 			TRACE_FUNC("Error send heartbeat delta packet to socket: %p sended bytes: %d\n", Socket, CNetworkTCP::iDeltaPacketLength - iDeltaPacketSize);
-			connect_data.m_mtxSendSocketBlocking.unlock();
+			connect_data.m_mtxSendSocketBlocking->unlock();
 			return;
 		}
 
@@ -78,7 +77,9 @@ void CNetworkTCP::SendHeartbeat(connect_data_t& connect_data)
 	connect_data.m_tpSendHeartbeat = {};
 	connect_data.m_tpLastHeartbeat = std::chrono::system_clock::now();
 
-	connect_data.m_mtxSendSocketBlocking.unlock();
+	this->m_UsersList.UpdateUser(connect_data.m_iConnectionID, connect_data);
+
+	connect_data.m_mtxSendSocketBlocking->unlock();
 }
 
 void CNetworkTCP::SendToSocket(char* pPacket, int iSize, connect_data_t& connect_data)
@@ -88,7 +89,7 @@ void CNetworkTCP::SendToSocket(char* pPacket, int iSize, connect_data_t& connect
 	if (Socket == 0)
 		return;
 
-	connect_data.m_mtxSendSocketBlocking.lock();
+	connect_data.m_mtxSendSocketBlocking->lock();
 
 	delta_packet_t deltaPacket{ DELTA_PACKET_MAGIC, iSize };
 
@@ -100,7 +101,7 @@ void CNetworkTCP::SendToSocket(char* pPacket, int iSize, connect_data_t& connect
 		if (send_ret == SOCKET_ERROR)
 		{
 			TRACE_FUNC("Error send delta packet to socket: %p sended bytes: %d\n", Socket, iDeltaPacketSended);
-			connect_data.m_mtxSendSocketBlocking.unlock();
+			connect_data.m_mtxSendSocketBlocking->unlock();
 			return;
 		}
 
@@ -115,19 +116,19 @@ void CNetworkTCP::SendToSocket(char* pPacket, int iSize, connect_data_t& connect
 		if (send_ret == SOCKET_ERROR)
 		{
 			TRACE_FUNC("Error send packet data to socket: %p sended bytes: %d\n", Socket, iPacketSended);
-			connect_data.m_mtxSendSocketBlocking.unlock();
+			connect_data.m_mtxSendSocketBlocking->unlock();
 			return;
 		}
 
 		iPacketSended += send_ret;
 	}
 
-	connect_data.m_mtxSendSocketBlocking.unlock();
+	connect_data.m_mtxSendSocketBlocking->unlock();
 }
 
 void CNetworkTCP::SendPacket(char* pPacket, int iSize)
 {
-	for (auto& pair : this->m_ClientsList)
+	for (auto& pair : this->m_UsersList.GetReadOnlyMapIterator())
 	{
 		SendToSocket(pPacket, iSize, pair.second);
 	}
@@ -135,12 +136,13 @@ void CNetworkTCP::SendPacket(char* pPacket, int iSize)
 
 void CNetworkTCP::SendPacketIncludeID(char* pPacket, int iSize, const netconnectcount iConnectionID)
 {
-	SendToSocket(pPacket, iSize, this->m_ClientsList[iConnectionID]);
+	auto user = this->m_UsersList.GetUser(iConnectionID);
+	SendToSocket(pPacket, iSize, user);
 }
 
 void CNetworkTCP::SendPacketExcludeID(char* pPacket, int iSize, const netconnectcount iConnectionID)
 {
-	for (auto& pair : this->m_ClientsList)
+	for (auto& pair : this->m_UsersList.GetReadOnlyMapIterator())
 	{
 		auto& data = pair.second;
 
@@ -156,7 +158,7 @@ void CNetworkTCP::SendPacketIncludeConnectionsID(char* pPacket, int iSize, const
 	if (iSizeofConections == 0)
 		return;
 
-	for (auto& pair : this->m_ClientsList)
+	for (auto& pair : this->m_UsersList.GetReadOnlyMapIterator())
 	{
 		auto& data = pair.second;
 
@@ -176,7 +178,7 @@ void CNetworkTCP::SendPacketExcludeConnectionsID(char* pPacket, int iSize, const
 	if (iSizeofConections == 0)
 		return;
 
-	for (auto& pair : this->m_ClientsList)
+	for (auto& pair : this->m_UsersList.GetReadOnlyMapIterator())
 	{
 		auto& data = pair.second;
 
@@ -201,7 +203,7 @@ void CNetworkTCP::SendPacket(char* pPacket, int iSize, void* pUserData, bool(*pf
 	if (!pfSortingDelegate)
 		return;
 
-	for (auto& pair : this->m_ClientsList)
+	for (auto& pair : this->m_UsersList.GetReadOnlyMapIterator())
 	{
 		if (!pfSortingDelegate(pUserData, pair.second.m_iConnectionID))
 			continue;
@@ -233,7 +235,7 @@ bool CNetworkTCP::ReceivePacket(net_packet_t* pPacket)
 
 void CNetworkTCP::DropConnections()
 {
-	for (auto& pair : this->m_ClientsList)
+	for (auto& pair : this->m_UsersList.GetReadOnlyMapIterator())
 	{
 		auto Socket = pair.second.m_ConnectionSocket;
 
@@ -312,7 +314,7 @@ void CNetworkTCP::thHostClientReceive(void* arg)
 			{
 				TRACE_FUNC("Dropped connection at ID: %d\n", ConnectionID);
 				_this->InvokeClientDisconnectionNotification(ConnectionID);
-				_this->DisconnectClient(Client);
+				_this->DisconnectUser(ConnectionID);
 				return;
 			}
 
@@ -330,6 +332,7 @@ void CNetworkTCP::thHostClientReceive(void* arg)
 			//TRACE_FUNC("Hearthbeat ack from id: %d\n", ConnectionID);
 			Client->m_tpSendHeartbeat = std::chrono::system_clock::now();
 			Client->m_tpLastHeartbeat = {};
+			_this->m_UsersList.UpdateUser(Client->m_iConnectionID, *Client);
 			continue;
 		}
 
@@ -355,7 +358,7 @@ void CNetworkTCP::thHostClientReceive(void* arg)
 			{
 				TRACE_FUNC("Dropped connection at ID: %d\n", ConnectionID);
 				_this->InvokeClientDisconnectionNotification(ConnectionID);
-				_this->DisconnectClient(Client);
+				_this->DisconnectUser(ConnectionID);
 				delete[] pPacketData;
 				return;
 			}
@@ -367,6 +370,9 @@ void CNetworkTCP::thHostClientReceive(void* arg)
 
 		_this->AddToPacketList(net_packet_t(pPacketData, deltaPacket.delta_desc, ConnectionID));
 	}
+
+	delete Client->m_mtxSendSocketBlocking;
+	delete Client;
 }
 
 void CNetworkTCP::thHostHeartbeat(void* arg)
@@ -379,24 +385,24 @@ void CNetworkTCP::thHostHeartbeat(void* arg)
 	{
 		_this->m_mtxHeatbeatThread.lock();
 
-		for (auto& i : _this->m_ClientsList)
+		for (auto& pair : _this->m_UsersList.GetReadOnlyMapIterator())
 		{
-			auto& data = i.second;
+			auto& data = pair.second;
 
 			if (data.m_ConnectionSocket == 0)
 				continue;
 
-			if (data.m_tpSendHeartbeat.time_since_epoch().count() != 0 && chrono::duration_cast<chrono::minutes>(chrono::system_clock::now() - data.m_tpSendHeartbeat).count() >= 1)
+			if (data.m_tpSendHeartbeat.time_since_epoch().count() != 0 && chrono::duration_cast<chrono::seconds>(chrono::system_clock::now() - data.m_tpSendHeartbeat).count() >= 60)
 			{
 				//TRACE_FUNC("Send heartbeat message to id: %d\n", data.m_iConnectionID);
 				_this->SendHeartbeat(data);
 			}
 
-			if (data.m_tpLastHeartbeat.time_since_epoch().count() != 0 && chrono::duration_cast<chrono::seconds>(chrono::system_clock::now() - data.m_tpLastHeartbeat).count() >= 15)
+			if (data.m_tpLastHeartbeat.time_since_epoch().count() != 0 && chrono::duration_cast<chrono::seconds>(chrono::system_clock::now() - data.m_tpLastHeartbeat).count() >= 3)
 			{
 				TRACE_FUNC("Failed heartbeat for id: %d\n", data.m_iConnectionID);
 				_this->InvokeClientDisconnectionNotification(data.m_iConnectionID);
-				_this->DisconnectClient(&data);
+				_this->DisconnectUser(data.m_iConnectionID);
 				continue;
 			}
 		}
@@ -428,7 +434,7 @@ void CNetworkTCP::thHostClientsHandling(void* arg)
 				LastError == WSAEOPNOTSUPP ||
 				LastError == WSAECONNRESET)
 			{
-				TRACE_FUNC("Failed to client connection at: %d, Error code: %d\n", (int)_this->m_ClientsList.size(), LastError);
+				TRACE_FUNC("Failed to client connection at: %I64d, Error code: %d\n", _this->m_UsersList.Size(), LastError);
 				continue;
 			}
 
@@ -441,12 +447,12 @@ void CNetworkTCP::thHostClientsHandling(void* arg)
 				break;
 			}
 
-			TRACE_FUNC("Failed to client connection at: %d\n", (int)_this->m_ClientsList.size());
+			TRACE_FUNC("Failed to client connection at: %I64d\n", _this->m_UsersList.Size());
 			continue;
 #endif // _WIN32
 		}
 
-		_this->m_iConnectionCount++;
+		_this->m_UsersList.m_iConnectionCount++;
 
 		auto iIP = _this->GetIntegerIpFromSockAddrIn(&SockAddrIn);
 		auto szIP = _this->GetStrIpFromSockAddrIn(&SockAddrIn);
@@ -454,28 +460,33 @@ void CNetworkTCP::thHostClientsHandling(void* arg)
 
 		TRACE_FUNC("Await new connection: %s:%d\n", szIP, iPort);
 
-		if (!_this->InvokeClientConnectionNotification(true, _this->m_iConnectionCount, iIP, szIP, iPort))
+		if (!_this->InvokeClientConnectionNotification(true, _this->m_UsersList.m_iConnectionCount, iIP, szIP, iPort))
 		{
-			TRACE_FUNC("Aborted connection by host user ID: %d\n", (int)_this->m_ClientsList.size());
+			TRACE_FUNC("Aborted connection by host user ID: %I64d\n", _this->m_UsersList.Size());
 			_this->DisconnectSocket(Connection);
 			continue;
 		}
 
-		auto& Client = _this->m_ClientsList[_this->m_iConnectionCount];
+		connect_data_t Client;
 		Client.m_ConnectionSocket = Connection;
-		Client.m_iConnectionID = _this->m_iConnectionCount;
+		Client.m_iConnectionID = _this->m_UsersList.m_iConnectionCount;
+		Client.m_mtxSendSocketBlocking = new std::mutex();
 		Client.m_SockAddrIn = SockAddrIn;
 		Client.m_tpSendHeartbeat = std::chrono::system_clock::now();
+		_this->m_UsersList.FetchUser(_this->m_UsersList.m_iConnectionCount, Client);
 
-		TRACE_FUNC("Connected clientid: %d\n", (int)_this->m_ClientsList.size());
+		TRACE_FUNC("Connected clientid: %I64d\n", _this->m_UsersList.Size());
 
 		auto* pHostReceiveThreadArg = new host_receive_thread_arg_t();
 		pHostReceiveThreadArg->m_Network = _this;
-		pHostReceiveThreadArg->m_CurrentClient = &Client;
+		pHostReceiveThreadArg->m_CurrentClient = new connect_data_t;
+		*pHostReceiveThreadArg->m_CurrentClient = Client;
 
 		CNetworkTCP::ThreadCreate(&CNetworkTCP::thHostClientReceive, pHostReceiveThreadArg);
 
-		_this->InvokeClientConnectionNotification(false, _this->m_iConnectionCount, iIP, szIP, iPort);
+		_this->InvokeClientConnectionNotification(false, _this->m_UsersList.m_iConnectionCount, iIP, szIP, iPort);
+
+		//std::this_thread::sleep_for(std::chrono::milliseconds(1));
 	}
 }
 
@@ -511,7 +522,7 @@ void CNetworkTCP::thClientHostReceive(void* arg)
 {
 	auto _this = (CNetworkTCP*)arg;
 
-	auto& HostData = _this->m_ClientsList[CLIENT_SOCKET];
+	auto HostData = _this->m_UsersList.GetUser(CLIENT_SOCKET);
 
 	auto Socket = HostData.m_ConnectionSocket;
 
@@ -596,10 +607,12 @@ bool CNetworkTCP::InitializeAsClient()
 		return false;
 	}
 
-	auto& Client = this->m_ClientsList[CLIENT_SOCKET];
+	auto Client = this->m_UsersList.GetUser(CLIENT_SOCKET);
 	Client.m_ConnectionSocket = this->m_Socket;
 	Client.m_iConnectionID = CLIENT_SOCKET;
+	Client.m_mtxSendSocketBlocking = new std::mutex();
 	Client.m_SockAddrIn = sockaddr_in();
+	this->m_UsersList.FetchUser(CLIENT_SOCKET, Client);
 
 	CNetworkTCP::ThreadCreate(&CNetworkTCP::thClientHostReceive, this);
 
@@ -609,9 +622,7 @@ bool CNetworkTCP::InitializeAsClient()
 void CNetworkTCP::AddToPacketList(net_packet_t NetPacket)
 {
 	this->m_mtxExchangePacketsData.lock();
-
 	this->m_PacketsList.push_back(NetPacket);
-
 	this->m_mtxExchangePacketsData.unlock();
 }
 
@@ -679,7 +690,7 @@ netconnectcount CNetworkTCP::GetConnectedUsersCount()
 {
 	netconnectcount ret = 0;
 
-	for (auto& pair : this->m_ClientsList)
+	for (auto& pair : this->m_UsersList.GetReadOnlyMapIterator())
 	{
 		if (pair.second.m_ConnectionSocket == 0)
 			continue;
@@ -716,8 +727,9 @@ void CNetworkTCP::DisconnectClient(connect_data_t* Client)
 
 void CNetworkTCP::DisconnectUser(netconnectcount iConnectionID)
 {
-	auto Client = &this->m_ClientsList[iConnectionID];
-	DisconnectClient(Client);
+	auto Client = this->m_UsersList.GetUser(iConnectionID);
+	DisconnectClient(&Client);
+	this->m_UsersList.UpdateUser(iConnectionID, Client);
 }
 
 void CNetworkTCP::NeedExit()
@@ -730,17 +742,20 @@ bool CNetworkTCP::IsNeedExit()
 	return this->m_bIsNeedExit;
 }
 
+void CNetworkTCP::ForceExit()
+{
+	NeedExit();
+	closesocket(this->m_Socket);
+	this->m_Socket = 0;
+}
+
 bool CNetworkTCP::GetIpByClientId(netconnectcount iConnectionID, int* pIP)
 {
 	if (!IsHost())
 		return false;
 
-	auto Client = &this->m_ClientsList[iConnectionID];
-
-	if (!Client)
-		return false;
-
-	*pIP = Client->m_SockAddrIn.sin_addr.S_un.S_addr;
+	auto Client = this->m_UsersList.GetUser(iConnectionID);
+	*pIP = Client.m_SockAddrIn.sin_addr.S_un.S_addr;
 
 	return true;
 }
