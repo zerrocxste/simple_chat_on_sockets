@@ -1,7 +1,5 @@
 using netconnectcount = unsigned int;
 
-constexpr netconnectcount CLIENT_SOCKET = 0;
-
 struct net_packet_t
 {
 	net_packet_t() :
@@ -67,7 +65,7 @@ private:
 		CNetworkTCP::NETSOCKADDR_IN m_SockAddrIn;
 	};
 
-	struct host_receive_thread_arg_t
+	struct receive_thread_arg_t
 	{
 		CNetworkTCP* m_Network;
 		connect_data_t* m_CurrentClient;
@@ -115,7 +113,7 @@ private:
 		CSyncObject m_SyncObj;
 		std::map<netconnectcount, connect_data_t> m_ClientsList;
 	public:
-		std::atomic<netconnectcount> m_iConnectionCount;
+		netconnectcount m_iConnectionCount;
 
 		std::uint64_t Size() { return this->m_ClientsList.size(); }
 
@@ -181,7 +179,10 @@ private:
 	NotificationCallbackUserDataPtr m_pOnClientConnectionUserData;
 	f_ClientDisconnectionNotification m_pf_ClientDisconnectionNotificationCallback;
 	NotificationCallbackUserDataPtr m_pOnClientDisconnectionUserData;
-	std::mutex m_mtxExchangePacketsData;
+	std::recursive_mutex m_mtxExchangePacketsData;
+	std::condition_variable m_cvThreadCounterNotifier;
+	std::mutex m_mtxThreadCounter;
+	std::atomic<int> m_aActiveThreadLinkCounter;
 
 	bool InitializeNetwork();
 	bool InitializeAsHost();
@@ -210,12 +211,16 @@ public:
 	void SendPacketIncludeConnectionsID(char* pPacket, int iSize, const netconnectcount* pConnectionsIDs, int iSizeofConections);
 	void SendPacketExcludeConnectionsID(char* pPacket, int iSize, const netconnectcount* pConnectionsIDs, int iSizeofConections);
 	void SendPacket(char* pPacket, int iSize, void* pUserData, bool(*pfSortingDelegate)(void* pUserData, netconnectcount iConnectionID));
+	void IncreaseThreadsCounter();
+	void DecreaseThreadsCounter();
+	void WaitThreadsFinish();
 	bool GetReceivedData(net_packet_t* pPacket);
 	bool ServerWasDowned();
 	bool IsHost();
 	netconnectcount GetConnectedUsersCount();
 	void DisconnectUser(netconnectcount iConnectionID);
 	bool GetIpByClientId(netconnectcount iConnectionID, int* pIP);
+	static void DeleteClientThreadData(connect_data_t*& client);
 
 	static char* GetStrIpFromSockAddrIn(PSOCKADDR_IN pSockAddrIn);
 	static int GetIntegerIpFromSockAddrIn(PSOCKADDR_IN pSockAddrIn);
